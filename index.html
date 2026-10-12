@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#071226">
+    <meta name="description" content="남산중학교 축제용 두 사람 포즈 협동 게임">
+    <title>일심동체 챌린지</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div>
+            <p>NAMSAN MIDDLE SCHOOL</p>
+            <strong>남산중 예체능 따라잡기</strong>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="soundBtn" class="icon-btn" type="button" aria-label="소리 켜기 또는 끄기">🔊</button>
+          <button id="homeBtn" class="icon-btn" type="button" aria-label="처음 화면" hidden>⌂</button>
+        </div>
+      </header>
+
+      <main>
+        <section id="introScreen" class="screen intro-screen is-active" aria-labelledby="mainTitle">
+          <div class="intro-copy">
+            <p class="eyebrow">일심동체 챌린지 · TWO PLAYERS · ONE PERFECT MOMENT</p>
+            <h1 id="mainTitle"><span>우리 둘이</span><br>하나의 장면이 된다</h1>
+            <p class="lead">안내선에 몸을 맞추고 같은 순간을 완성하세요.<br>두 사람의 호흡이 맞을수록 점수가 올라갑니다.</p>
+
+            <div class="privacy-note">
+              <span aria-hidden="true">◉</span>
+              촬영 영상과 얼굴은 저장되거나 서버로 전송되지 않습니다.
+            </div>
+          </div>
+
+          <div class="mission-select" role="group" aria-label="미션 분야 선택">
+            <h2>미션을 선택하세요</h2>
+            <div class="mode-grid">
+              <button class="mode-card is-selected" data-mode="sports" type="button">
+                <span class="mode-icon">⚡</span>
+                <strong>체육 모드</strong>
+                <small>힘차고 역동적인 포즈</small>
+              </button>
+              <button class="mode-card" data-mode="art" type="button">
+                <span class="mode-icon">◆</span>
+                <strong>미술 모드</strong>
+                <small>조각상처럼 창의적인 포즈</small>
+              </button>
+              <button class="mode-card" data-mode="music" type="button">
+                <span class="mode-icon">♫</span>
+                <strong>음악 모드</strong>
+                <small>무대를 빛내는 엔딩 포즈</small>
+              </button>
+            </div>
+            <button id="startBtn" class="primary-btn" type="button">
+              카메라 게임 시작하기 <span>→</span>
+            </button>
+            <button id="rankingBtn" class="text-btn" type="button">오늘의 최고 점수 보기</button>
+          </div>
+        </section>
+
+        <section id="gameScreen" class="screen game-screen" aria-label="게임 화면">
+          <div class="game-hud">
+            <div class="round-badge"><span id="roundLabel">ROUND 1</span><small>/ 3</small></div>
+            <div class="mission-copy">
+              <span id="modeLabel">체육 모드</span>
+              <h2 id="missionTitle">승리의 V</h2>
+              <p id="missionHint">두 팔을 높이 들고 다리를 힘차게 벌려요.</p>
+            </div>
+            <div class="timer" role="status" aria-label="남은 시간"><span id="timerValue">15</span><small>SEC</small></div>
+          </div>
+
+          <div class="camera-stage" id="cameraStage">
+            <video id="cameraVideo" muted playsinline></video>
+            <canvas id="poseCanvas" role="img" aria-label="포즈 안내선"></canvas>
+
+            <div class="player-label player-one"><b>PLAYER 1</b><span id="p1Score">준비</span></div>
+            <div class="player-label player-two"><b>PLAYER 2</b><span id="p2Score">준비</span></div>
+
+            <div id="cameraLoading" class="stage-message">
+              <span class="loader" aria-hidden="true"></span>
+              <strong id="loadingTitle">카메라를 준비하고 있어요</strong>
+              <p id="loadingText">잠시만 기다려 주세요.</p>
+              <button id="retryBtn" class="secondary-btn" type="button" hidden>다시 시도</button>
+            </div>
+
+            <div id="countdown" class="countdown" aria-live="assertive" hidden>3</div>
+            <div id="roundFlash" class="round-flash" hidden>
+              <strong id="roundScore">92</strong>
+              <span>환상의 호흡!</span>
+            </div>
+
+            <div class="hold-panel">
+              <p id="statusText">두 사람이 안내선 안에 서 주세요</p>
+              <div class="hold-track"><div id="holdFill" class="hold-fill"></div></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="resultScreen" class="screen result-screen" aria-labelledby="resultTitle">
+          <div class="result-orbit" aria-hidden="true"><span></span></div>
+          <p class="eyebrow">MISSION COMPLETE</p>
+          <h2 id="resultTitle">일심동체 챌린지 완료!</h2>
+          <div class="final-score">
+            <span>최종 점수</span>
+            <strong id="finalScore">267</strong>
+            <small>/ 300</small>
+          </div>
+          <p id="resultMessage" class="result-message">두 사람의 호흡이 거의 완벽해요!</p>
+
+          <div class="score-summary" id="scoreSummary"></div>
+
+          <div class="best-score">
+            <span>이 태블릿의 최고 기록</span>
+            <strong id="bestScore">285점</strong>
+          </div>
+
+          <div class="result-actions">
+            <button id="replayBtn" class="primary-btn" type="button">같은 모드 다시 도전</button>
+            <button id="changeModeBtn" class="secondary-btn" type="button">다른 미션 선택</button>
+          </div>
+        </section>
+
+        <section id="rankingScreen" class="screen ranking-screen" aria-labelledby="rankingTitle">
+          <p class="eyebrow">LOCAL SCORE BOARD</p>
+          <h2 id="rankingTitle">오늘의 최고 점수</h2>
+          <p>이 태블릿에서 기록된 점수만 표시됩니다.</p>
+          <ol id="rankingList" class="ranking-list"></ol>
+          <div class="ranking-actions">
+            <button id="rankingBackBtn" class="primary-btn" type="button">돌아가기</button>
+            <button id="resetRankingBtn" class="danger-text-btn" type="button">기록 초기화</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="rotateNotice" class="rotate-notice" aria-live="polite">
+      <div class="rotate-device" aria-hidden="true">▭</div>
+      <strong>태블릿을 가로로 돌려 주세요</strong>
+      <p>일심동체 챌린지는 가로 화면에 맞춰져 있습니다.</p>
+    </div>
+
+    <noscript>이 게임은 JavaScript가 필요합니다.</noscript>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

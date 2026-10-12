@@ -1,0 +1,19 @@
+{
+  "name": "남산중 일심동체 챌린지",
+  "short_name": "일심동체",
+  "description": "두 사람이 포즈를 맞추는 남산중학교 축제 체험 게임",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#030814",
+  "theme_color": "#071226",
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
