@@ -269,8 +269,66 @@ main { min-height: 0; position: relative; }
 }
 .player-label b { display: block; font-size: 0.62rem; letter-spacing: 0.13em; color: var(--cyan); }
 .player-label span { font-weight: 900; }
+.player-label small {
+  display: block;
+  max-width: 240px;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
 .player-one { left: 14px; }
 .player-two { right: 14px; text-align: right; }
+
+.beat-panel {
+  position: absolute;
+  z-index: 7;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 213, 63, 0.46);
+  border-radius: 15px;
+  background: rgba(2, 11, 25, 0.88);
+  box-shadow: 0 0 22px rgba(255, 213, 63, 0.12);
+  backdrop-filter: blur(12px);
+}
+.beat-panel > strong {
+  min-width: 48px;
+  color: var(--warning);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+.beat-dots { display: flex; gap: 7px; }
+.beat-dot {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(128, 246, 255, 0.35);
+  border-radius: 50%;
+  color: var(--muted);
+  background: rgba(46, 233, 255, 0.07);
+  font-size: 0.8rem;
+  font-weight: 950;
+  transition: 120ms ease;
+}
+.beat-dot.is-active {
+  color: #03101b;
+  background: var(--cyan);
+  border-color: white;
+  transform: scale(1.22);
+  box-shadow: 0 0 20px rgba(46, 233, 255, 0.85);
+}
+.beat-dot.is-downbeat.is-active {
+  background: var(--orange);
+  box-shadow: 0 0 22px rgba(255, 157, 46, 0.9);
+}
 
 .stage-message {
   position: absolute;
@@ -409,6 +467,9 @@ main { min-height: 0; position: relative; }
   .mission-copy p { display: none; }
   .timer { width: 62px; }
   .timer span { font-size: 1.3rem; }
+  .player-label small { max-width: 180px; font-size: 0.6rem; }
+  .beat-panel { top: 8px; padding: 6px 10px; gap: 8px; }
+  .beat-dot { width: 28px; height: 28px; font-size: 0.7rem; }
 }
 
 @media (orientation: portrait) and (max-width: 900px) {

@@ -1,4 +1,4 @@
-const CACHE_NAME = "namsan-unity-v2";
+const CACHE_NAME = "namsan-unity-v4";
 const LOCAL_ASSETS = ["./", "./index.html", "./style.css", "./app.js", "./manifest.webmanifest", "./assets/icon.svg"];
 
 self.addEventListener("install", (event) => {

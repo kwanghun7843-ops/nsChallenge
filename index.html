@@ -45,17 +45,17 @@
               <button class="mode-card is-selected" data-mode="sports" type="button">
                 <span class="mode-icon">⚡</span>
                 <strong>체육 모드</strong>
-                <small>힘차고 역동적인 포즈</small>
+                <small>서로 다른 역할로 스포츠 장면 완성</small>
               </button>
               <button class="mode-card" data-mode="art" type="button">
                 <span class="mode-icon">◆</span>
                 <strong>미술 모드</strong>
-                <small>조각상처럼 창의적인 포즈</small>
+                <small>두 사람이 유명 작품 속 인물로 변신</small>
               </button>
               <button class="mode-card" data-mode="music" type="button">
                 <span class="mode-icon">♫</span>
                 <strong>음악 모드</strong>
-                <small>무대를 빛내는 엔딩 포즈</small>
+                <small>숫자 박자에 맞춰 동작을 주고받기</small>
               </button>
             </div>
             <button id="startBtn" class="primary-btn" type="button">
@@ -67,11 +67,11 @@
 
         <section id="gameScreen" class="screen game-screen" aria-label="게임 화면">
           <div class="game-hud">
-            <div class="round-badge"><span id="roundLabel">ROUND 1</span><small>/ 3</small></div>
+            <div class="round-badge"><span id="roundLabel">ROUND 1</span><small>/ 5</small></div>
             <div class="mission-copy">
               <span id="modeLabel">체육 모드</span>
-              <h2 id="missionTitle">승리의 V</h2>
-              <p id="missionHint">두 팔을 높이 들고 다리를 힘차게 벌려요.</p>
+              <h2 id="missionTitle">균형 듀오</h2>
+              <p id="missionHint">서로 반대 방향으로 기울여 균형 장면을 완성하세요.</p>
             </div>
             <div class="timer" role="status" aria-label="남은 시간"><span id="timerValue">15</span><small>SEC</small></div>
           </div>
@@ -80,8 +80,17 @@
             <video id="cameraVideo" muted playsinline></video>
             <canvas id="poseCanvas" role="img" aria-label="포즈 안내선"></canvas>
 
-            <div class="player-label player-one"><b>PLAYER 1</b><span id="p1Score">준비</span></div>
-            <div class="player-label player-two"><b>PLAYER 2</b><span id="p2Score">준비</span></div>
+            <div class="player-label player-one">
+              <b>PLAYER A</b><span id="p1Score">준비</span><small id="p1Role">왼쪽 역할</small>
+            </div>
+            <div class="player-label player-two">
+              <b>PLAYER B</b><span id="p2Score">준비</span><small id="p2Role">오른쪽 역할</small>
+            </div>
+
+            <div id="beatPanel" class="beat-panel" hidden aria-live="polite">
+              <strong id="beatPhase">연습</strong>
+              <div id="beatDots" class="beat-dots" aria-label="현재 박자"></div>
+            </div>
 
             <div id="cameraLoading" class="stage-message">
               <span class="loader" aria-hidden="true"></span>
@@ -110,7 +119,7 @@
           <div class="final-score">
             <span>최종 점수</span>
             <strong id="finalScore">267</strong>
-            <small>/ 300</small>
+            <small>/ 500</small>
           </div>
           <p id="resultMessage" class="result-message">두 사람의 호흡이 거의 완벽해요!</p>
 
