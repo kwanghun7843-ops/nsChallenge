@@ -7,10 +7,10 @@ const ROUNDS_PER_GAME = 5;
 const ROUND_SECONDS = 15;
 const HOLD_REQUIRED_MS = 950;
 const PASS_SCORE = 74;
-const MUSIC_PREVIEW_MS = 5200;
-const MUSIC_BPM = 93.487;
-const MUSIC_BEAT_OFFSET_SECONDS = 0.968;
-const MUSIC_BEAT_MS = (60_000 / MUSIC_BPM) * 4;
+const PLAYER_READY_HOLD_MS = 900;
+const MUSIC_RESULT_PAUSE_MS = 700;
+const MUSIC_CARD_HOLD_MS = 2000;
+const MUSIC_CARD_TRAVEL_MS = 2600;
 const MUSIC_WINDOW_MS = 850;
 
 const BGM_TRACKS = {
@@ -271,6 +271,9 @@ let musicState = null;
 let judgementTimer = null;
 let bgmMode = null;
 let bgmDuckTimer = null;
+let waitingForPlayers = false;
+let playerReadyStartedAt = null;
+let countdownRunId = 0;
 
 function showScreen(id) {
   screens.forEach((screen) => screen.classList.toggle("is-active", screen.id === id));
@@ -457,11 +460,14 @@ function startupErrorMessage(error, stage) {
 
 function prepareRound() {
   if (!gameRunning) return;
+  countdownRunId += 1;
   clearTimeout(judgementTimer);
   $("#judgement").hidden = true;
   currentMission = resolveMission(MISSIONS[selectedMode][roundIndex % MISSIONS[selectedMode].length]);
   roundStartedAt = 0;
   holdStartedAt = null;
+  waitingForPlayers = true;
+  playerReadyStartedAt = null;
   bestRoundScore = 0;
   bestPhaseScore = 0;
   phaseIndex = 0;
@@ -474,21 +480,17 @@ function prepareRound() {
   $("#missionTitle").textContent = currentMission.title;
   $("#missionHint").textContent = currentMission.hint;
   $("#timerValue").textContent = selectedMode === "music" ? rhythmRoundSeconds(currentMission) : ROUND_SECONDS;
-  $("#statusText").textContent = selectedMode === "music" ? "다가오는 동작 카드를 확인하세요" : "두 사람이 안내선 안에 서 주세요";
+  $("#statusText").textContent = "두 사람의 전신을 인식하고 있어요";
   $("#holdFill").style.width = "0%";
-  $("#p1Score").textContent = "준비";
-  $("#p2Score").textContent = "준비";
+  $("#p1Score").textContent = "찾는 중";
+  $("#p2Score").textContent = "찾는 중";
   $("#musicHud").hidden = selectedMode !== "music";
-  $("#holdFill").parentElement.hidden = selectedMode === "music";
+  $("#holdFill").parentElement.hidden = false;
   $("#comboValue").textContent = "0";
   $("#unityValue").textContent = "0%";
   $("#unityFill").style.width = "0%";
   renderBeatProgress();
-  countdown().then(() => {
-    if (!gameRunning) return;
-    roundStartedAt = performance.now();
-    if (selectedMode === "music") initializeMusicRound(roundStartedAt);
-  });
+  $("#countdown").hidden = true;
 }
 
 function resolveMission(mission) {
@@ -505,20 +507,12 @@ function resolveMission(mission) {
 }
 
 function rhythmRoundSeconds(mission) {
-  return Math.ceil((MUSIC_PREVIEW_MS + (mission.steps.length - 1) * MUSIC_BEAT_MS + MUSIC_WINDOW_MS) / 1000);
+  const firstStep = MUSIC_CARD_HOLD_MS + MUSIC_CARD_TRAVEL_MS + MUSIC_WINDOW_MS;
+  const nextStep = MUSIC_RESULT_PAUSE_MS + firstStep;
+  return Math.ceil((firstStep + Math.max(0, mission.steps.length - 1) * nextStep) / 1000);
 }
 
 function initializeMusicRound(startedAt) {
-  const intervalSeconds = MUSIC_BEAT_MS / 1000;
-  const canUseAudioClock = bgmMode === "music" && !bgmAudio.paused && Number.isFinite(bgmAudio.currentTime);
-  const audioNow = canUseAudioClock ? bgmAudio.currentTime : 0;
-  const minimumFirstHit = audioNow + MUSIC_PREVIEW_MS / 1000;
-  const gridSteps = Math.max(0, Math.ceil((minimumFirstHit - MUSIC_BEAT_OFFSET_SECONDS) / intervalSeconds));
-  const firstAudioHit = MUSIC_BEAT_OFFSET_SECONDS + gridSteps * intervalSeconds;
-  const audioTimes = canUseAudioClock
-    ? currentMission.steps.map((_, index) => firstAudioHit + index * intervalSeconds)
-    : null;
-  const firstDelayMs = canUseAudioClock ? (firstAudioHit - audioNow) * 1000 : MUSIC_PREVIEW_MS;
   musicState = {
     index: 0,
     results: [],
@@ -529,24 +523,34 @@ function initializeMusicRound(startedAt) {
     cueBeeped: false,
     hitBeeped: false,
     finishing: false,
-    audioTimes,
-    times: currentMission.steps.map((_, index) => startedAt + firstDelayMs + index * MUSIC_BEAT_MS),
+    appearedAt: startedAt,
+    moveStartedAt: startedAt + MUSIC_CARD_HOLD_MS,
+    hitAt: startedAt + MUSIC_CARD_HOLD_MS + MUSIC_CARD_TRAVEL_MS,
   };
   renderBeatProgress();
 }
 
-async function countdown() {
+async function countdown(runId) {
   const element = $("#countdown");
   element.hidden = false;
   for (const value of [3, 2, 1]) {
+    if (!gameRunning || runId !== countdownRunId) {
+      if (!gameRunning || runId === countdownRunId) element.hidden = true;
+      return false;
+    }
     element.textContent = value;
     beep(440 + (3 - value) * 100, 0.09);
     await wait(650);
+  }
+  if (!gameRunning || runId !== countdownRunId) {
+    if (!gameRunning || runId === countdownRunId) element.hidden = true;
+    return false;
   }
   element.textContent = "START!";
   beep(820, 0.12);
   await wait(500);
   element.hidden = true;
+  return gameRunning && runId === countdownRunId;
 }
 
 function detectLoop() {
@@ -611,6 +615,11 @@ function renderFrame(detectedPoses) {
     if (pose) drawDetected(pose, colors[index], width, height);
   });
 
+  if (waitingForPlayers) {
+    updatePlayerReadiness(playerPoses);
+    return;
+  }
+
   if (selectedMode === "music") updateMusicState(playerPoses, scores);
   else updateGameState(playerPoses, scores);
 }
@@ -634,6 +643,55 @@ function hasUsableBody(pose) {
 
 function bodyCenterX(pose) {
   return ((pose[23]?.x ?? 0) + (pose[24]?.x ?? 0)) / 2;
+}
+
+function updatePlayerReadiness(playerPoses) {
+  const now = performance.now();
+  const [playerOne, playerTwo] = playerPoses;
+  $("#p1Score").textContent = playerOne ? "인식 완료" : "찾는 중";
+  $("#p2Score").textContent = playerTwo ? "인식 완료" : "찾는 중";
+
+  if (!playerOne || !playerTwo) {
+    playerReadyStartedAt = null;
+    $("#holdFill").style.width = "0%";
+    $("#statusText").textContent = "두 사람의 전신이 모두 보이게 서 주세요";
+    return;
+  }
+
+  if (bodyCenterX(playerOne) > 0.5 || bodyCenterX(playerTwo) < 0.5) {
+    playerReadyStartedAt = null;
+    $("#holdFill").style.width = "0%";
+    $("#statusText").textContent = "한 명씩 좌우 안내 영역에 나누어 서 주세요";
+    return;
+  }
+
+  if (!playerReadyStartedAt) playerReadyStartedAt = now;
+  const progress = Math.min(1, (now - playerReadyStartedAt) / PLAYER_READY_HOLD_MS);
+  $("#holdFill").style.width = `${Math.round(progress * 100)}%`;
+  $("#statusText").textContent = progress < 1
+    ? "두 사람 인식 완료! 잠시 그대로 서 주세요"
+    : "준비 완료! 카운트다운을 시작합니다";
+
+  if (progress >= 1) beginRoundCountdown();
+}
+
+function beginRoundCountdown() {
+  if (!waitingForPlayers) return;
+  waitingForPlayers = false;
+  playerReadyStartedAt = null;
+  const runId = countdownRunId;
+  countdown(runId).then((started) => {
+    if (!started) return;
+    roundStartedAt = performance.now();
+    $("#holdFill").style.width = "0%";
+    $("#holdFill").parentElement.hidden = selectedMode === "music";
+    if (selectedMode === "music") {
+      initializeMusicRound(roundStartedAt);
+      $("#statusText").textContent = "첫 번째 포즈를 확인하세요 · 2초 뒤 출발!";
+    } else {
+      $("#statusText").textContent = "안내 실루엣에 몸을 맞춰 보세요";
+    }
+  });
 }
 
 function updateGameState(playerPoses, scores) {
@@ -695,13 +753,11 @@ function completeStaticPhase(score) {
 function updateMusicState(playerPoses, scores) {
   if (resolvingRound || $("#countdown").hidden === false || !musicState || musicState.finishing) return;
   const now = performance.now();
-  const usingAudioClock = musicState.audioTimes && bgmMode === "music" && !bgmAudio.paused;
-  const offset = usingAudioClock
-    ? (bgmAudio.currentTime - musicState.audioTimes[musicState.index]) * 1000
-    : now - musicState.times[musicState.index];
-  const remaining = usingAudioClock
-    ? Math.max(0, Math.ceil(musicState.audioTimes.at(-1) + MUSIC_WINDOW_MS / 1000 - bgmAudio.currentTime))
-    : Math.max(0, Math.ceil((musicState.times.at(-1) + MUSIC_WINDOW_MS - now) / 1000));
+  const offset = now - musicState.hitAt;
+  const remainingCurrent = Math.max(0, musicState.hitAt + MUSIC_WINDOW_MS - now);
+  const remainingSteps = currentMission.steps.length - musicState.index - 1;
+  const stepDuration = MUSIC_RESULT_PAUSE_MS + MUSIC_CARD_HOLD_MS + MUSIC_CARD_TRAVEL_MS + MUSIC_WINDOW_MS;
+  const remaining = Math.max(0, Math.ceil((remainingCurrent + remainingSteps * stepDuration) / 1000));
   $("#timerValue").textContent = remaining;
   $("#p1Score").textContent = playerPoses[0] ? `${scores[0]}점` : "찾는 중";
   $("#p2Score").textContent = playerPoses[1] ? `${scores[1]}점` : "찾는 중";
@@ -710,8 +766,13 @@ function updateMusicState(playerPoses, scores) {
     $("#statusText").textContent = "두 사람의 전신이 모두 보이게 서 주세요";
   } else if (bodyCenterX(playerPoses[0]) > 0.5 || bodyCenterX(playerPoses[1]) < 0.5) {
     $("#statusText").textContent = "한 명씩 좌우 안내 영역에 나누어 서 주세요";
+  } else if (now < musicState.appearedAt) {
+    $("#statusText").textContent = "판정을 확인하세요 · 다음 포즈가 곧 나타납니다";
+  } else if (now < musicState.moveStartedAt) {
+    const seconds = Math.max(1, Math.ceil((musicState.moveStartedAt - now) / 1000));
+    $("#statusText").textContent = `다음 포즈를 확인하세요 · ${seconds}초 뒤 출발!`;
   } else if (offset < -MUSIC_WINDOW_MS) {
-    $("#statusText").textContent = "카드가 판정선에 닿는 순간 동작하세요";
+    $("#statusText").textContent = "포즈 카드가 움직입니다 · 판정선에 맞춰 준비하세요";
   } else {
     $("#statusText").textContent = "NOW! 안내선에 몸을 맞추세요";
   }
@@ -724,7 +785,7 @@ function updateMusicState(playerPoses, scores) {
     }
   }
 
-  if (offset >= -Math.min(700, MUSIC_BEAT_MS / 2) && !musicState.cueBeeped) {
+  if (offset >= -700 && !musicState.cueBeeped) {
     musicState.cueBeeped = true;
     beep(330, 0.045);
   }
@@ -768,6 +829,12 @@ function finalizeMusicBeat() {
     musicState.finishing = true;
     const roundScore = average(musicState.results.map((result) => result.points));
     setTimeout(() => finishRound(roundScore), 850);
+  } else {
+    const appearedAt = performance.now() + MUSIC_RESULT_PAUSE_MS;
+    musicState.appearedAt = appearedAt;
+    musicState.moveStartedAt = appearedAt + MUSIC_CARD_HOLD_MS;
+    musicState.hitAt = musicState.moveStartedAt + MUSIC_CARD_TRAVEL_MS;
+    $("#statusText").textContent = "판정을 확인하세요 · 다음 포즈가 곧 나타납니다";
   }
 }
 
@@ -903,9 +970,9 @@ function scoreColor(score) {
 }
 
 function drawRhythmLane(width, height) {
-  if (!musicState) return;
+  if (!musicState || musicState.finishing || musicState.index >= currentMission.steps.length) return;
   const now = performance.now();
-  const vanishingY = height * 0.08;
+  const vanishingY = height * 0.18;
   const hitY = height * 0.72;
 
   ctx.save();
@@ -941,21 +1008,31 @@ function drawRhythmLane(width, height) {
   ctx.textAlign = "center";
   ctx.fillText("HIT LINE", width * 0.5, hitY + 22);
 
-  for (let index = musicState.index; index < currentMission.steps.length; index += 1) {
-    const timeUntil = musicState.audioTimes && bgmMode === "music" && !bgmAudio.paused
-      ? (musicState.audioTimes[index] - bgmAudio.currentTime) * 1000
-      : musicState.times[index] - now;
-    if (timeUntil > MUSIC_PREVIEW_MS || timeUntil < -MUSIC_WINDOW_MS) continue;
-    const progress = Math.max(0, Math.min(1, 1 - timeUntil / MUSIC_PREVIEW_MS));
-    const eased = progress * progress * (3 - 2 * progress);
-    const y = vanishingY + (hitY - vanishingY) * eased;
-    const scale = 0.34 + eased * 0.78;
-    drawBeatCard(currentMission.steps[index], index, width * 0.5, y, scale, width, height);
+  if (now < musicState.appearedAt) {
+    ctx.restore();
+    return;
   }
+
+  const elapsedSinceMove = now - musicState.moveStartedAt;
+  const progress = Math.max(0, Math.min(1, elapsedSinceMove / MUSIC_CARD_TRAVEL_MS));
+  const eased = progress * progress * (3 - 2 * progress);
+  const y = vanishingY + (hitY - vanishingY) * eased;
+  const scale = 0.58 + eased * 0.54;
+  const holdRemaining = Math.max(0, musicState.moveStartedAt - now);
+  drawBeatCard(
+    currentMission.steps[musicState.index],
+    musicState.index,
+    width * 0.5,
+    y,
+    scale,
+    width,
+    height,
+    holdRemaining,
+  );
   ctx.restore();
 }
 
-function drawBeatCard(pair, index, centerX, centerY, scale, width, height) {
+function drawBeatCard(pair, index, centerX, centerY, scale, width, height, holdRemaining = 0) {
   const cardWidth = Math.min(width * 0.34, 360) * scale;
   const cardHeight = Math.min(height * 0.27, 178) * scale;
   const x = centerX - cardWidth / 2;
@@ -975,6 +1052,11 @@ function drawBeatCard(pair, index, centerX, centerY, scale, width, height) {
   ctx.font = `900 ${Math.max(8, 13 * scale)}px system-ui`;
   ctx.textAlign = "center";
   ctx.fillText(`${index + 1} POSE`, centerX, y - Math.max(5, 8 * scale));
+  if (holdRemaining > 0) {
+    ctx.fillStyle = "#b8ff36";
+    ctx.font = `900 ${Math.max(10, 15 * scale)}px system-ui`;
+    ctx.fillText(`${Math.max(1, Math.ceil(holdRemaining / 1000))}초 후 출발`, centerX, y + cardHeight + Math.max(13, 18 * scale));
+  }
   ctx.restore();
 }
 

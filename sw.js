@@ -1,4 +1,4 @@
-const CACHE_NAME = "namsan-unity-v6-local-model-silhouette";
+const CACHE_NAME = "namsan-unity-v7-player-ready-music-pause";
 const LOCAL_ASSETS = [
   "./",
   "./index.html",
