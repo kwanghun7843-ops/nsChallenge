@@ -1,4 +1,4 @@
-const CACHE_NAME = "namsan-unity-v5-bgm";
+const CACHE_NAME = "namsan-unity-v6-local-model-silhouette";
 const LOCAL_ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,8 @@ const LOCAL_ASSETS = [
   "./app.js",
   "./manifest.webmanifest",
   "./assets/icon.svg",
+  "./vendor/mediapipe/vision_bundle.mjs",
+  "./models/pose_landmarker_lite.task",
   "./assets/audio/sync-rush.mp3",
   "./assets/audio/living-canvas.mp3",
   "./assets/audio/neon-unity.mp3",

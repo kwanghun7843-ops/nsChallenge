@@ -1,16 +1,17 @@
-const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
-const WASM_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm";
-const MEDIAPIPE_MODULE_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/+esm";
+const APP_BASE_URL = new URL("./", import.meta.url);
+const MODEL_URL = new URL("models/pose_landmarker_lite.task", APP_BASE_URL).href;
+const WASM_URL = new URL("vendor/mediapipe/wasm", APP_BASE_URL).href.replace(/\/$/, "");
+const MEDIAPIPE_MODULE_URL = new URL("vendor/mediapipe/vision_bundle.mjs", APP_BASE_URL).href;
 const STORAGE_KEY = "namsan-unity-challenge-scores-v1";
 const ROUNDS_PER_GAME = 5;
 const ROUND_SECONDS = 15;
 const HOLD_REQUIRED_MS = 950;
 const PASS_SCORE = 74;
-const MUSIC_PREVIEW_MS = 3200;
+const MUSIC_PREVIEW_MS = 5200;
 const MUSIC_BPM = 93.487;
 const MUSIC_BEAT_OFFSET_SECONDS = 0.968;
-const MUSIC_BEAT_MS = (60_000 / MUSIC_BPM) * 2;
-const MUSIC_WINDOW_MS = 620;
+const MUSIC_BEAT_MS = (60_000 / MUSIC_BPM) * 4;
+const MUSIC_WINDOW_MS = 850;
 
 const BGM_TRACKS = {
   sports: { src: "./assets/audio/sync-rush.mp3", volume: 0.34 },
@@ -33,12 +34,6 @@ const LANDMARK = {
   LEFT_ANKLE: 27,
   RIGHT_ANKLE: 28,
 };
-
-const GUIDE_CONNECTIONS = [
-  [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
-  [11, 23], [12, 24], [23, 24], [23, 25], [25, 27], [24, 26], [26, 28],
-  [0, 11], [0, 12],
-];
 
 const ANGLES = [
   [11, 13, 15], [12, 14, 16],
@@ -330,9 +325,20 @@ async function startGame() {
 async function startCameraAndModel() {
   $("#retryBtn").hidden = true;
   $("#cameraLoading").classList.remove("is-hidden");
+  let startupStage = "camera";
   try {
+    stopCamera();
+    $("#loadingTitle").textContent = "카메라 권한을 확인하는 중";
+    $("#loadingText").textContent = "허용 창이 나타나면 카메라 사용을 허용해 주세요.";
+    mediaStream = await requestCameraStream();
+    video.srcObject = mediaStream;
+    await video.play();
+    await waitForVideoReady();
+
     if (!poseLandmarker) {
+      startupStage = "model";
       $("#loadingTitle").textContent = "동작 인식 모델을 불러오는 중";
+      $("#loadingText").textContent = "기기에 저장된 동작 인식 파일을 준비하고 있어요.";
       if (!FilesetResolver || !PoseLandmarker) {
         const visionModule = await import(MEDIAPIPE_MODULE_URL);
         FilesetResolver = visionModule.FilesetResolver;
@@ -360,23 +366,6 @@ async function startCameraAndModel() {
       }
     }
 
-    $("#loadingTitle").textContent = "카메라 권한을 확인하는 중";
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        facingMode: "user",
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30, max: 30 },
-      },
-    });
-    video.srcObject = mediaStream;
-    await video.play();
-    await new Promise((resolve) => {
-      if (video.readyState >= 2) resolve();
-      else video.addEventListener("loadeddata", resolve, { once: true });
-    });
-
     $("#cameraLoading").classList.add("is-hidden");
     gameRunning = true;
     activateBgm(selectedMode);
@@ -384,18 +373,86 @@ async function startCameraAndModel() {
     detectLoop();
   } catch (error) {
     console.error(error);
+    stopCamera();
     stopBgm();
-    $("#loadingTitle").textContent = "카메라를 시작할 수 없어요";
-    $("#loadingText").textContent = cameraErrorMessage(error);
+    $("#loadingTitle").textContent = startupStage === "model"
+      ? "동작 인식 모델을 준비할 수 없어요"
+      : "카메라를 시작할 수 없어요";
+    $("#loadingText").textContent = startupErrorMessage(error, startupStage);
     $("#retryBtn").hidden = false;
   }
 }
 
-function cameraErrorMessage(error) {
-  if (!window.isSecureContext) return "GitHub Pages의 HTTPS 주소로 접속했는지 확인해 주세요.";
-  if (error?.name === "NotAllowedError") return "주소창의 카메라 권한을 허용한 뒤 다시 시도해 주세요.";
-  if (error?.name === "NotFoundError") return "사용 가능한 전면 카메라를 찾지 못했습니다.";
-  return "인터넷 연결과 카메라 권한을 확인한 뒤 다시 시도해 주세요.";
+async function requestCameraStream() {
+  if (!window.isSecureContext) {
+    const error = new Error("Secure context required");
+    error.name = "SecurityError";
+    throw error;
+  }
+  if (!navigator.mediaDevices?.getUserMedia) {
+    const error = new Error("getUserMedia is unavailable");
+    error.name = "UnsupportedError";
+    throw error;
+  }
+
+  const attempts = [
+    {
+      audio: false,
+      video: {
+        facingMode: "user",
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        frameRate: { ideal: 30, max: 30 },
+      },
+    },
+    { audio: false, video: { facingMode: "user" } },
+    { audio: false, video: true },
+  ];
+
+  let lastError;
+  for (const constraints of attempts) {
+    try {
+      return await navigator.mediaDevices.getUserMedia(constraints);
+    } catch (error) {
+      lastError = error;
+      if (["NotAllowedError", "SecurityError", "NotFoundError", "NotReadableError"].includes(error?.name)) throw error;
+    }
+  }
+  throw lastError;
+}
+
+function waitForVideoReady() {
+  if (video.readyState >= 2) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(Object.assign(new Error("Camera timeout"), { name: "TimeoutError" })), 8000);
+    video.addEventListener("loadeddata", () => {
+      clearTimeout(timeout);
+      resolve();
+    }, { once: true });
+  });
+}
+
+function startupErrorMessage(error, stage) {
+  const code = `${stage === "model" ? "MODEL_INIT" : "CAMERA"} · ${error?.name || "Error"}`;
+  if (stage === "model") {
+    return `동작 인식 파일 초기화에 실패했습니다. 새로고침 후 다시 시도해 주세요. (오류 코드: ${code})`;
+  }
+  if (!window.isSecureContext || error?.name === "SecurityError") {
+    return `GitHub Pages의 HTTPS 주소로 접속해 주세요. (오류 코드: ${code})`;
+  }
+  if (error?.name === "NotAllowedError") {
+    return `주소창의 카메라 권한을 허용한 뒤 다시 시도해 주세요. (오류 코드: ${code})`;
+  }
+  if (error?.name === "NotFoundError") {
+    return `사용 가능한 카메라를 찾지 못했습니다. (오류 코드: ${code})`;
+  }
+  if (["NotReadableError", "AbortError"].includes(error?.name)) {
+    return `다른 앱이 카메라를 사용 중인지 확인해 주세요. (오류 코드: ${code})`;
+  }
+  if (error?.name === "UnsupportedError") {
+    return `이 브라우저는 카메라 실행을 지원하지 않습니다. 최신 Chrome을 사용해 주세요. (오류 코드: ${code})`;
+  }
+  return `카메라 초기화에 실패했습니다. 브라우저를 닫았다가 다시 실행해 주세요. (오류 코드: ${code})`;
 }
 
 function prepareRound() {
@@ -546,7 +603,7 @@ function renderFrame(detectedPoses) {
   drawZones(width, height);
   if (selectedMode === "music") drawRhythmLane(width, height);
   if (targetPair) {
-    const targetColors = selectedMode === "music" ? ["#2ee9ff", "#ff9d2e"] : colors;
+    const targetColors = ["#2ee9ff", "#ff9d2e"];
     drawTarget(targetPair[0], 0, targetColors[0], width, height);
     drawTarget(targetPair[1], 1, targetColors[1], width, height);
   }
@@ -720,7 +777,7 @@ function showJudgement(judgement, points) {
   duckBgm(620);
   element.className = `judgement is-${judgement.toLowerCase()}`;
   $("#judgementText").textContent = judgement;
-  $("#judgementScore").textContent = points ? `+${points}` : "다음 박자를 준비!";
+  $("#judgementScore").textContent = points ? `+${points}` : "다음 포즈를 준비!";
   element.hidden = false;
   if (judgement === "PERFECT") successChime(95);
   else if (judgement === "GOOD") beep(620, 0.1);
@@ -747,7 +804,7 @@ function renderBeatProgress() {
   $("#beatProgress").innerHTML = currentMission.steps.map((_, index) => {
     const result = results[index];
     const state = result ? `is-${result.judgement.toLowerCase()}` : index === current ? "is-current" : "";
-    return `<i class="${state}" title="${index + 1}박"></i>`;
+    return `<i class="${state}" title="${index + 1}번째 포즈"></i>`;
   }).join("");
 }
 
@@ -892,15 +949,15 @@ function drawRhythmLane(width, height) {
     const progress = Math.max(0, Math.min(1, 1 - timeUntil / MUSIC_PREVIEW_MS));
     const eased = progress * progress * (3 - 2 * progress);
     const y = vanishingY + (hitY - vanishingY) * eased;
-    const scale = 0.28 + eased * 0.72;
+    const scale = 0.34 + eased * 0.78;
     drawBeatCard(currentMission.steps[index], index, width * 0.5, y, scale, width, height);
   }
   ctx.restore();
 }
 
 function drawBeatCard(pair, index, centerX, centerY, scale, width, height) {
-  const cardWidth = Math.min(width * 0.26, 250) * scale;
-  const cardHeight = Math.min(height * 0.18, 118) * scale;
+  const cardWidth = Math.min(width * 0.34, 360) * scale;
+  const cardHeight = Math.min(height * 0.27, 178) * scale;
   const x = centerX - cardWidth / 2;
   const y = centerY - cardHeight / 2;
   ctx.save();
@@ -917,7 +974,7 @@ function drawBeatCard(pair, index, centerX, centerY, scale, width, height) {
   ctx.fillStyle = "rgba(255,255,255,.88)";
   ctx.font = `900 ${Math.max(8, 13 * scale)}px system-ui`;
   ctx.textAlign = "center";
-  ctx.fillText(`${index + 1} BEAT`, centerX, y - Math.max(5, 8 * scale));
+  ctx.fillText(`${index + 1} POSE`, centerX, y - Math.max(5, 8 * scale));
   ctx.restore();
 }
 
@@ -926,14 +983,7 @@ function drawMiniPose(target, centerX, top, poseWidth, poseHeight, color) {
     x: centerX + (coords[0] - 0.5) * poseWidth,
     y: top + coords[1] * poseHeight,
   });
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineCap = "round";
-  ctx.lineWidth = Math.max(1.2, poseWidth * 0.045);
-  GUIDE_CONNECTIONS.forEach(([a, b]) => drawLine(toCanvas(target[a]), toCanvas(target[b])));
-  [0, 15, 16, 27, 28].forEach((index) => drawNode(toCanvas(target[index]), color, Math.max(1.2, poseWidth * 0.035)));
-  ctx.restore();
+  drawPoseSilhouette(target, toCanvas, color, poseWidth, 0.72, 0.95);
 }
 
 function drawZones(width, height) {
@@ -958,44 +1008,89 @@ function drawTarget(target, playerIndex, color, width, height) {
     y: top + coords[1] * guideHeight,
   });
 
-  ctx.save();
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.globalAlpha = 0.18;
-  ctx.lineWidth = Math.max(15, width * 0.014);
-  ctx.strokeStyle = color;
-  GUIDE_CONNECTIONS.forEach(([a, b]) => drawLine(toCanvas(target[a]), toCanvas(target[b])));
-
-  ctx.globalAlpha = 0.88;
-  ctx.setLineDash([10, 7]);
-  ctx.lineWidth = Math.max(3, width * 0.003);
-  ctx.strokeStyle = color;
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 14;
-  GUIDE_CONNECTIONS.forEach(([a, b]) => drawLine(toCanvas(target[a]), toCanvas(target[b])));
-  Object.values(target).forEach((coords) => drawNode(toCanvas(coords), color, Math.max(4, width * 0.004)));
-  ctx.restore();
+  drawPoseSilhouette(target, toCanvas, color, guideWidth, 0.16, 0.88);
 }
 
 function drawDetected(pose, color, width, height) {
   const toCanvas = (landmark) => ({ x: landmark.x * width, y: landmark.y * height });
+  drawPoseSilhouette(pose, toCanvas, color, width * 0.34, 0.07, 0.6);
+}
+
+function drawPoseSilhouette(pose, toCanvas, color, bodyScale, fillAlpha, outlineAlpha) {
+  if (!pose?.[0] || !pose?.[11] || !pose?.[12] || !pose?.[23] || !pose?.[24]) return;
+  const p = (index) => toCanvas(pose[index]);
+  const shoulderSpan = distanceBetween(p(11), p(12));
+  const limbWidth = Math.max(3, bodyScale * 0.055);
+  const outlineWidth = Math.max(1.2, bodyScale * 0.008);
+  const headRadius = Math.max(3.5, shoulderSpan * 0.23);
+  const shoulderMid = midpoint(p(11), p(12));
+  const hipMid = midpoint(p(23), p(24));
+
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.globalAlpha = 0.94;
-  ctx.lineWidth = Math.max(3, width * 0.0024);
-  ctx.strokeStyle = color;
   ctx.shadowColor = color;
-  ctx.shadowBlur = 8;
-  GUIDE_CONNECTIONS.forEach(([a, b]) => {
-    if ((pose[a]?.visibility ?? 1) > 0.4 && (pose[b]?.visibility ?? 1) > 0.4) {
-      drawLine(toCanvas(pose[a]), toCanvas(pose[b]));
-    }
+  ctx.shadowBlur = Math.max(4, bodyScale * 0.025);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+
+  ctx.globalAlpha = fillAlpha;
+  ctx.beginPath();
+  ctx.moveTo(p(11).x, p(11).y);
+  ctx.lineTo(p(12).x, p(12).y);
+  ctx.lineTo(p(24).x, p(24).y);
+  ctx.lineTo(p(23).x, p(23).y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.lineWidth = limbWidth;
+  [[11, 13, 15], [12, 14, 16], [23, 25, 27], [24, 26, 28]].forEach((indices) => {
+    if (indices.every((index) => pose[index])) drawPosePath(indices.map(p));
   });
-  [0, 11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28].forEach((index) => {
-    if ((pose[index]?.visibility ?? 1) > 0.4) drawNode(toCanvas(pose[index]), color, Math.max(3, width * 0.003));
+  ctx.lineWidth = Math.max(3, limbWidth * 0.72);
+  drawPosePath([p(0), shoulderMid]);
+  ctx.beginPath();
+  ctx.arc(p(0).x, p(0).y, headRadius, 0, Math.PI * 2);
+  ctx.fill();
+  [15, 16, 27, 28].forEach((index) => {
+    if (!pose[index]) return;
+    ctx.beginPath();
+    ctx.arc(p(index).x, p(index).y, limbWidth * 0.52, 0, Math.PI * 2);
+    ctx.fill();
   });
+
+  ctx.globalAlpha = outlineAlpha;
+  ctx.lineWidth = outlineWidth;
+  ctx.beginPath();
+  ctx.moveTo(p(11).x, p(11).y);
+  ctx.lineTo(p(12).x, p(12).y);
+  ctx.lineTo(p(24).x, p(24).y);
+  ctx.lineTo(p(23).x, p(23).y);
+  ctx.closePath();
+  ctx.stroke();
+  [[11, 13, 15], [12, 14, 16], [23, 25, 27], [24, 26, 28]].forEach((indices) => {
+    if (indices.every((index) => pose[index])) drawPosePath(indices.map(p));
+  });
+  ctx.beginPath();
+  ctx.arc(p(0).x, p(0).y, headRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.globalAlpha = Math.min(0.42, fillAlpha * 1.6);
+  ctx.lineWidth = Math.max(1, outlineWidth * 0.72);
+  drawPosePath([shoulderMid, hipMid]);
   ctx.restore();
+}
+
+function drawPosePath(points) {
+  if (!points.length) return;
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  points.slice(1).forEach((pointValue) => ctx.lineTo(pointValue.x, pointValue.y));
+  ctx.stroke();
+}
+
+function distanceBetween(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
 function drawLine(a, b) {
@@ -1003,13 +1098,6 @@ function drawLine(a, b) {
   ctx.moveTo(a.x, a.y);
   ctx.lineTo(b.x, b.y);
   ctx.stroke();
-}
-
-function drawNode(pointValue, color, radius) {
-  ctx.beginPath();
-  ctx.arc(pointValue.x, pointValue.y, radius, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
 }
 
 function roundedRect(context, x, y, width, height, radius) {
