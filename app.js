@@ -5,10 +5,18 @@ const STORAGE_KEY = "namsan-unity-challenge-scores-v1";
 const ROUNDS_PER_GAME = 5;
 const ROUND_SECONDS = 15;
 const HOLD_REQUIRED_MS = 950;
-const SEQUENCE_HOLD_MS = 650;
-const MUSIC_BEAT_MS = 800;
-const MUSIC_TRANSITION_MS = 1200;
 const PASS_SCORE = 74;
+const MUSIC_PREVIEW_MS = 3200;
+const MUSIC_BPM = 93.487;
+const MUSIC_BEAT_OFFSET_SECONDS = 0.968;
+const MUSIC_BEAT_MS = (60_000 / MUSIC_BPM) * 2;
+const MUSIC_WINDOW_MS = 620;
+
+const BGM_TRACKS = {
+  sports: { src: "./assets/audio/sync-rush.mp3", volume: 0.34 },
+  art: { src: "./assets/audio/living-canvas.mp3", volume: 0.29 },
+  music: { src: "./assets/audio/neon-unity.mp3", volume: 0.28 },
+};
 
 const LANDMARK = {
   NOSE: 0,
@@ -58,263 +66,175 @@ function makePose(overrides = {}) {
 }
 
 const POSES = {
-  ready: makePose(),
-  armsUp: makePose({
-    13: [0.75, 0.16], 15: [0.82, 0.04], 14: [0.25, 0.16], 16: [0.18, 0.04],
-  }),
-  rightArmUp: makePose({
-    13: [0.76, 0.15], 15: [0.82, 0.03], 14: [0.26, 0.42], 16: [0.38, 0.56],
-  }),
-  leftArmUp: makePose({
-    13: [0.74, 0.42], 15: [0.62, 0.56], 14: [0.24, 0.15], 16: [0.18, 0.03],
-  }),
-  crouch: makePose({
-    0: [0.50, 0.25], 11: [0.62, 0.38], 12: [0.38, 0.38],
-    13: [0.76, 0.47], 15: [0.88, 0.42], 14: [0.24, 0.47], 16: [0.12, 0.42],
-    23: [0.59, 0.63], 24: [0.41, 0.63], 25: [0.72, 0.78], 27: [0.78, 0.94],
-    26: [0.28, 0.78], 28: [0.22, 0.94],
-  }),
-
-  balanceA: makePose({
-    0: [0.42, 0.12], 11: [0.54, 0.28], 12: [0.30, 0.24],
-    13: [0.72, 0.28], 15: [0.91, 0.28], 14: [0.13, 0.24], 16: [0.01, 0.24],
-    25: [0.58, 0.76], 27: [0.60, 0.96], 26: [0.32, 0.69], 28: [0.13, 0.63],
-  }),
-  balanceB: makePose({
-    0: [0.58, 0.12], 11: [0.70, 0.24], 12: [0.46, 0.28],
-    13: [0.87, 0.24], 15: [0.99, 0.24], 14: [0.28, 0.28], 16: [0.09, 0.28],
-    25: [0.68, 0.69], 27: [0.87, 0.63], 26: [0.42, 0.76], 28: [0.40, 0.96],
-  }),
-  relayA: makePose({
-    13: [0.73, 0.35], 15: [0.95, 0.41], 14: [0.24, 0.19], 16: [0.08, 0.27],
-    23: [0.59, 0.57], 24: [0.40, 0.54], 25: [0.68, 0.75], 27: [0.57, 0.94],
-    26: [0.31, 0.68], 28: [0.18, 0.84],
-  }),
-  relayB: makePose({
-    13: [0.76, 0.19], 15: [0.92, 0.27], 14: [0.27, 0.35], 16: [0.05, 0.41],
-    23: [0.60, 0.54], 24: [0.41, 0.57], 25: [0.69, 0.68], 27: [0.82, 0.84],
-    26: [0.32, 0.75], 28: [0.43, 0.94],
-  }),
-  kickLeft: makePose({
-    13: [0.74, 0.30], 15: [0.88, 0.42], 14: [0.26, 0.30], 16: [0.12, 0.18],
-    25: [0.64, 0.76], 27: [0.65, 0.96], 26: [0.33, 0.65], 28: [0.06, 0.58],
-  }),
-  kickRight: makePose({
-    13: [0.74, 0.30], 15: [0.88, 0.18], 14: [0.26, 0.30], 16: [0.12, 0.42],
-    25: [0.67, 0.65], 27: [0.94, 0.58], 26: [0.36, 0.76], 28: [0.35, 0.96],
-  }),
-  keeperLeft: makePose({
-    0: [0.38, 0.15], 11: [0.50, 0.30], 12: [0.27, 0.27],
-    13: [0.31, 0.19], 15: [0.09, 0.12], 14: [0.16, 0.37], 16: [0.02, 0.32],
-    25: [0.56, 0.74], 27: [0.70, 0.93], 26: [0.27, 0.72], 28: [0.11, 0.91],
-  }),
-  keeperRight: makePose({
-    0: [0.62, 0.15], 11: [0.73, 0.27], 12: [0.50, 0.30],
-    13: [0.84, 0.37], 15: [0.98, 0.32], 14: [0.69, 0.19], 16: [0.91, 0.12],
-    25: [0.73, 0.72], 27: [0.89, 0.91], 26: [0.44, 0.74], 28: [0.30, 0.93],
-  }),
-  passA: makePose({
-    13: [0.68, 0.39], 15: [0.55, 0.44], 14: [0.32, 0.39], 16: [0.45, 0.44],
-    25: [0.66, 0.75], 27: [0.78, 0.95], 26: [0.34, 0.75], 28: [0.22, 0.95],
-  }),
-  receiveB: makePose({
-    13: [0.74, 0.38], 15: [0.58, 0.44], 14: [0.26, 0.38], 16: [0.42, 0.44],
-    25: [0.69, 0.76], 27: [0.78, 0.95], 26: [0.31, 0.76], 28: [0.22, 0.95],
-  }),
-  followA: makePose({
-    13: [0.78, 0.31], 15: [0.94, 0.31], 14: [0.22, 0.31], 16: [0.06, 0.31],
-  }),
-  shootB: makePose({
-    13: [0.68, 0.13], 15: [0.55, 0.02], 14: [0.32, 0.13], 16: [0.45, 0.02],
-    25: [0.67, 0.72], 27: [0.77, 0.94], 26: [0.33, 0.72], 28: [0.23, 0.94],
-  }),
-  championLow: makePose({
-    0: [0.50, 0.24], 11: [0.62, 0.38], 12: [0.38, 0.38],
-    13: [0.74, 0.18], 15: [0.68, 0.05], 14: [0.26, 0.48], 16: [0.40, 0.57],
-    23: [0.59, 0.63], 24: [0.41, 0.63], 25: [0.69, 0.80], 27: [0.77, 0.95],
-    26: [0.34, 0.82], 28: [0.32, 0.96],
-  }),
-  championHigh: makePose({
-    13: [0.77, 0.15], 15: [0.91, 0.03], 14: [0.23, 0.15], 16: [0.09, 0.03],
+  neutral: makePose(),
+  victoryHigh: makePose({
+    13: [0.75, 0.17], 15: [0.88, 0.05], 14: [0.25, 0.17], 16: [0.12, 0.05],
     25: [0.68, 0.74], 27: [0.82, 0.95], 26: [0.32, 0.74], 28: [0.18, 0.95],
   }),
-
-  screamA: makePose({
-    13: [0.69, 0.34], 15: [0.57, 0.18], 14: [0.31, 0.34], 16: [0.43, 0.18],
+  victoryLow: makePose({
+    13: [0.75, 0.48], 15: [0.88, 0.60], 14: [0.25, 0.48], 16: [0.12, 0.60],
+    23: [0.59, 0.60], 24: [0.41, 0.60], 25: [0.68, 0.78], 27: [0.78, 0.94],
+    26: [0.32, 0.78], 28: [0.22, 0.94],
   }),
-  screamWave: makePose({
-    0: [0.58, 0.12], 11: [0.71, 0.24], 12: [0.47, 0.28],
-    13: [0.87, 0.17], 15: [0.98, 0.26], 14: [0.30, 0.37], 16: [0.13, 0.30],
-    25: [0.70, 0.72], 27: [0.83, 0.94], 26: [0.39, 0.75], 28: [0.29, 0.95],
+  balanceLeft: makePose({
+    0: [0.42, 0.13], 11: [0.54, 0.28], 12: [0.30, 0.25],
+    13: [0.78, 0.28], 15: [0.96, 0.28], 14: [0.12, 0.22], 16: [0.01, 0.16],
+    23: [0.50, 0.55], 24: [0.34, 0.53], 25: [0.56, 0.76], 27: [0.58, 0.96],
+    26: [0.26, 0.67], 28: [0.08, 0.60],
+  }),
+  balanceRight: makePose({
+    0: [0.58, 0.13], 11: [0.70, 0.25], 12: [0.46, 0.28],
+    13: [0.88, 0.22], 15: [0.99, 0.16], 14: [0.22, 0.28], 16: [0.04, 0.28],
+    23: [0.66, 0.53], 24: [0.50, 0.55], 25: [0.74, 0.67], 27: [0.92, 0.60],
+    26: [0.44, 0.76], 28: [0.42, 0.96],
+  }),
+  runnerLeft: makePose({
+    13: [0.78, 0.35], 15: [0.62, 0.47], 14: [0.27, 0.17], 16: [0.13, 0.27],
+    23: [0.60, 0.57], 24: [0.40, 0.54], 25: [0.69, 0.75], 27: [0.59, 0.93],
+    26: [0.31, 0.68], 28: [0.20, 0.84],
+  }),
+  runnerRight: makePose({
+    13: [0.73, 0.17], 15: [0.87, 0.27], 14: [0.22, 0.35], 16: [0.38, 0.47],
+    23: [0.60, 0.54], 24: [0.40, 0.57], 25: [0.69, 0.68], 27: [0.80, 0.84],
+    26: [0.31, 0.75], 28: [0.41, 0.93],
+  }),
+  goalkeeper: makePose({
+    13: [0.82, 0.35], 15: [0.96, 0.31], 14: [0.18, 0.35], 16: [0.04, 0.31],
+    23: [0.60, 0.58], 24: [0.40, 0.58], 25: [0.72, 0.75], 27: [0.80, 0.94],
+    26: [0.28, 0.75], 28: [0.20, 0.94],
+  }),
+  basketballShot: makePose({
+    13: [0.68, 0.14], 15: [0.54, 0.03], 14: [0.32, 0.14], 16: [0.46, 0.03],
+    25: [0.66, 0.78], 27: [0.72, 0.96], 26: [0.34, 0.78], 28: [0.28, 0.96],
+  }),
+  passRight: makePose({
+    13: [0.78, 0.36], 15: [0.94, 0.42], 14: [0.64, 0.38], 16: [0.90, 0.43],
+  }),
+  receiveLeft: makePose({
+    13: [0.36, 0.38], 15: [0.10, 0.43], 14: [0.22, 0.36], 16: [0.06, 0.42],
+  }),
+  celebrate: makePose({
+    13: [0.72, 0.18], 15: [0.82, 0.06], 14: [0.28, 0.42], 16: [0.42, 0.55],
+  }),
+  scream: makePose({
+    13: [0.66, 0.30], 15: [0.58, 0.14], 14: [0.34, 0.30], 16: [0.42, 0.14],
+    25: [0.64, 0.76], 27: [0.72, 0.96], 26: [0.36, 0.76], 28: [0.28, 0.96],
+  }),
+  waveBackdrop: makePose({
+    13: [0.82, 0.18], 15: [0.96, 0.08], 14: [0.18, 0.42], 16: [0.04, 0.52],
+    25: [0.68, 0.73], 27: [0.80, 0.94], 26: [0.32, 0.78], 28: [0.22, 0.96],
   }),
   gothicA: makePose({
-    13: [0.68, 0.41], 15: [0.55, 0.54], 14: [0.32, 0.41], 16: [0.45, 0.54],
+    13: [0.62, 0.40], 15: [0.58, 0.66], 14: [0.38, 0.40], 16: [0.42, 0.66],
   }),
   gothicB: makePose({
-    13: [0.72, 0.38], 15: [0.55, 0.50], 14: [0.28, 0.47], 16: [0.39, 0.58],
+    13: [0.72, 0.40], 15: [0.66, 0.62], 14: [0.28, 0.40], 16: [0.34, 0.62],
+    25: [0.62, 0.77], 27: [0.64, 0.96], 26: [0.38, 0.77], 28: [0.36, 0.96],
   }),
-  athensUp: makePose({
-    13: [0.70, 0.13], 15: [0.64, 0.01], 14: [0.27, 0.42], 16: [0.42, 0.53],
+  pointUp: makePose({
+    13: [0.66, 0.12], 15: [0.60, 0.01], 14: [0.28, 0.42], 16: [0.42, 0.54],
   }),
-  athensForward: makePose({
-    13: [0.76, 0.34], 15: [0.94, 0.34], 14: [0.26, 0.43], 16: [0.42, 0.53],
+  pointForward: makePose({
+    13: [0.78, 0.32], 15: [0.96, 0.30], 14: [0.30, 0.42], 16: [0.44, 0.54],
   }),
   nightCaptain: makePose({
-    13: [0.74, 0.36], 15: [0.94, 0.31], 14: [0.27, 0.44], 16: [0.41, 0.55],
-    25: [0.67, 0.74], 27: [0.78, 0.95], 26: [0.33, 0.74], 28: [0.24, 0.95],
+    13: [0.80, 0.30], 15: [0.96, 0.24], 14: [0.28, 0.40], 16: [0.38, 0.58],
+    25: [0.68, 0.73], 27: [0.82, 0.94], 26: [0.33, 0.78], 28: [0.24, 0.96],
   }),
-  nightLieutenant: makePose({
-    13: [0.76, 0.19], 15: [0.86, 0.08], 14: [0.28, 0.39], 16: [0.40, 0.55],
-    25: [0.69, 0.73], 27: [0.82, 0.94], 26: [0.34, 0.76], 28: [0.24, 0.96],
+  nightGuard: makePose({
+    13: [0.68, 0.40], 15: [0.58, 0.62], 14: [0.26, 0.18], 16: [0.12, 0.07],
   }),
-  creationA: makePose({
-    13: [0.77, 0.35], 15: [0.98, 0.28], 14: [0.26, 0.46], 16: [0.39, 0.56],
-    25: [0.69, 0.74], 27: [0.80, 0.94], 26: [0.34, 0.76], 28: [0.24, 0.96],
+  reachRight: makePose({
+    13: [0.74, 0.32], 15: [0.98, 0.31], 14: [0.24, 0.44], 16: [0.38, 0.58],
   }),
-  creationB: makePose({
-    13: [0.74, 0.46], 15: [0.61, 0.56], 14: [0.23, 0.35], 16: [0.02, 0.28],
-    25: [0.66, 0.76], 27: [0.76, 0.96], 26: [0.31, 0.74], 28: [0.20, 0.94],
+  reachLeft: makePose({
+    13: [0.76, 0.44], 15: [0.62, 0.58], 14: [0.26, 0.32], 16: [0.02, 0.31],
   }),
-
+  beatCenter: makePose({
+    13: [0.66, 0.36], 15: [0.54, 0.42], 14: [0.34, 0.36], 16: [0.46, 0.42],
+  }),
+  beatOpen: makePose({
+    13: [0.80, 0.30], 15: [0.98, 0.30], 14: [0.20, 0.30], 16: [0.02, 0.30],
+  }),
+  beatUp: makePose({
+    13: [0.72, 0.13], 15: [0.64, 0.02], 14: [0.28, 0.13], 16: [0.36, 0.02],
+  }),
+  beatDown: makePose({
+    13: [0.70, 0.46], 15: [0.62, 0.64], 14: [0.30, 0.46], 16: [0.38, 0.64],
+    23: [0.59, 0.62], 24: [0.41, 0.62], 25: [0.68, 0.78], 27: [0.76, 0.94],
+    26: [0.32, 0.78], 28: [0.24, 0.94],
+  }),
+  crossRight: makePose({
+    13: [0.78, 0.32], 15: [0.94, 0.23], 14: [0.32, 0.40], 16: [0.50, 0.48],
+  }),
+  crossLeft: makePose({
+    13: [0.68, 0.40], 15: [0.50, 0.48], 14: [0.22, 0.32], 16: [0.06, 0.23],
+  }),
   conductorLeft: makePose({
-    13: [0.68, 0.34], 15: [0.51, 0.30], 14: [0.30, 0.34], 16: [0.07, 0.30],
+    13: [0.78, 0.22], 15: [0.94, 0.13], 14: [0.25, 0.40], 16: [0.42, 0.48],
   }),
   conductorRight: makePose({
-    13: [0.70, 0.34], 15: [0.93, 0.30], 14: [0.32, 0.34], 16: [0.49, 0.30],
+    13: [0.75, 0.40], 15: [0.58, 0.48], 14: [0.22, 0.22], 16: [0.06, 0.13],
   }),
-  leanLeft: makePose({
-    0: [0.40, 0.12], 11: [0.53, 0.27], 12: [0.29, 0.24],
-    13: [0.70, 0.33], 15: [0.82, 0.42], 14: [0.15, 0.31], 16: [0.03, 0.40],
+  guitarLeft: makePose({
+    13: [0.72, 0.38], 15: [0.58, 0.48], 14: [0.28, 0.36], 16: [0.42, 0.45],
+    25: [0.67, 0.74], 27: [0.80, 0.95], 26: [0.34, 0.73], 28: [0.23, 0.94],
   }),
-  leanRight: makePose({
-    0: [0.60, 0.12], 11: [0.71, 0.24], 12: [0.47, 0.27],
-    13: [0.85, 0.31], 15: [0.97, 0.40], 14: [0.30, 0.33], 16: [0.18, 0.42],
-  }),
-  outerA: makePose({
-    13: [0.72, 0.42], 15: [0.58, 0.55], 14: [0.23, 0.28], 16: [0.03, 0.28],
-  }),
-  outerB: makePose({
-    13: [0.77, 0.28], 15: [0.97, 0.28], 14: [0.28, 0.42], 16: [0.42, 0.55],
-  }),
-  innerA: makePose({
-    13: [0.78, 0.30], 15: [0.98, 0.30], 14: [0.28, 0.44], 16: [0.42, 0.55],
-  }),
-  innerB: makePose({
-    13: [0.72, 0.44], 15: [0.58, 0.55], 14: [0.22, 0.30], 16: [0.02, 0.30],
+  guitarRight: makePose({
+    13: [0.72, 0.36], 15: [0.58, 0.45], 14: [0.28, 0.38], 16: [0.42, 0.48],
+    25: [0.66, 0.73], 27: [0.77, 0.94], 26: [0.33, 0.74], 28: [0.20, 0.95],
   }),
 };
 
 const MISSIONS = {
   sports: [
+    { title: "균형 듀오", hint: "서로 반대 방향으로 기울여 하나의 균형을 만들어요.", phases: [[POSES.balanceLeft, POSES.balanceRight]] },
+    { title: "릴레이 터치", hint: "달리는 자세로 중앙에서 배턴을 주고받는 순간을 만들어요.", phases: [[POSES.runnerLeft, POSES.runnerRight]] },
+    { title: "결정적 한 장면", hint: "슈터와 골키퍼 역할은 매번 무작위로 정해져요.", phases: [[POSES.basketballShot, POSES.goalkeeper]], randomSwap: true },
     {
-      title: "균형 듀오", type: "hold",
-      hint: "서로 반대 방향으로 기울여 좌우 대칭의 균형 장면을 완성하세요.",
-      roles: ["왼쪽으로 기울여 한쪽 다리 들기", "오른쪽으로 기울여 한쪽 다리 들기"],
-      poses: [POSES.balanceA, POSES.balanceB],
+      title: "패스 앤 슛",
+      hint: "1단계 패스 뒤, 2단계 슛까지 연속으로 성공하세요.",
+      phaseHints: ["1/2 중앙으로 공을 패스하고 받아요.", "2/2 PLAYER 2는 슛, PLAYER 1은 환호해요."],
+      phases: [[POSES.passRight, POSES.receiveLeft], [POSES.celebrate, POSES.basketballShot]],
     },
-    {
-      title: "릴레이 터치", type: "hold", pairRule: "handsNear",
-      hint: "달리는 자세를 유지하며 중앙에서 배턴을 건네는 순간을 만드세요.",
-      roles: ["앞 주자 · 팔을 뒤로 뻗기", "뒤 주자 · 팔을 앞으로 뻗기"],
-      poses: [POSES.relayA, POSES.relayB],
-    },
-    {
-      title: "결정적 한 장면", type: "hold",
-      hint: "슈터와 골키퍼가 같은 방향에 반응해 결정적인 순간을 완성하세요.",
-      variants: [
-        { direction: "왼쪽", roles: ["슈터 · 왼쪽으로 슈팅", "골키퍼 · 왼쪽으로 선방"], poses: [POSES.kickLeft, POSES.keeperLeft] },
-        { direction: "오른쪽", roles: ["슈터 · 오른쪽으로 슈팅", "골키퍼 · 오른쪽으로 선방"], poses: [POSES.kickRight, POSES.keeperRight] },
-      ],
-    },
-    {
-      title: "패스 앤 슛", type: "sequence",
-      hint: "패스와 농구 슛을 순서대로 이어 완성하세요.",
-      roles: ["패스 담당", "받아서 슛 담당"],
-      steps: [
-        { label: "1단계 · 패스", roles: ["가슴 앞에서 패스", "가슴 앞에서 공 받기"], poses: [POSES.passA, POSES.receiveB] },
-        { label: "2단계 · 슛", roles: ["양팔을 펼쳐 패스 마무리", "양팔을 머리 위로 올려 슛"], poses: [POSES.followA, POSES.shootB] },
-      ],
-    },
-    {
-      title: "챔피언의 순간", type: "hold",
-      hint: "서로 다른 높이에서 하나의 우승 세리머니를 완성하세요.",
-      roles: ["한쪽 무릎을 낮추고 주먹 들기", "서서 양팔을 V자로 올리기"],
-      poses: [POSES.championLow, POSES.championHigh],
-    },
+    { title: "챔피언의 순간", hint: "낮은 승리 포즈와 높은 승리 포즈를 함께 완성해요.", phases: [[POSES.victoryLow, POSES.victoryHigh]] },
   ],
   art: [
-    {
-      title: "절규", type: "hold", artist: "에드바르 뭉크",
-      hint: "절규하는 인물과 흔들리는 배경이 되어 한 장면을 완성하세요.",
-      roles: ["양손을 얼굴 가까이에 둔 절규 자세", "몸과 팔을 기울여 흔들리는 배경 표현"],
-      poses: [POSES.screamA, POSES.screamWave],
-    },
-    {
-      title: "아메리칸 고딕", type: "hold", artist: "그랜트 우드",
-      hint: "나란히 서서 서로 다른 손 위치의 엄숙한 2인 초상을 완성하세요.",
-      roles: ["양손을 몸 중앙에 모으기", "한 손은 앞, 다른 손은 몸 가까이"],
-      poses: [POSES.gothicA, POSES.gothicB],
-    },
-    {
-      title: "아테네 학당", type: "hold", artist: "라파엘로",
-      hint: "위와 앞을 가리키는 두 철학자의 대비되는 동작을 재현하세요.",
-      roles: ["한쪽 팔로 하늘을 가리키기", "한쪽 팔을 앞으로 뻗기"],
-      poses: [POSES.athensUp, POSES.athensForward],
-    },
-    {
-      title: "야경", type: "hold", artist: "렘브란트",
-      hint: "앞쪽 두 인물의 서로 다른 팔 방향과 걸음 자세를 재현하세요.",
-      roles: ["팔을 앞으로 뻗은 대장", "몸을 돌려 팔을 세운 부관"],
-      poses: [POSES.nightCaptain, POSES.nightLieutenant],
-    },
-    {
-      title: "아담의 창조", type: "hold", artist: "미켈란젤로", pairRule: "handsNear",
-      hint: "서로를 향해 팔을 뻗어 두 손끝이 가까워지는 순간을 완성하세요.",
-      roles: ["오른쪽을 향해 팔 뻗기", "왼쪽을 향해 팔 뻗기"],
-      poses: [POSES.creationA, POSES.creationB],
-    },
+    { title: "뭉크 〈절규〉", hint: "PLAYER 1은 절규, PLAYER 2는 흔들리는 배경이 되어 보세요.", phases: [[POSES.scream, POSES.waveBackdrop]] },
+    { title: "그랜트 우드 〈아메리칸 고딕〉", hint: "두 사람이 나란히 서서 엄숙한 초상화를 완성해요.", phases: [[POSES.gothicA, POSES.gothicB]] },
+    { title: "라파엘로 〈아테네 학당〉", hint: "한 명은 위를, 한 명은 앞을 가리켜요.", phases: [[POSES.pointUp, POSES.pointForward]] },
+    { title: "렘브란트 〈야경〉", hint: "대장과 경비대원이 되어 역동적인 중심 장면을 만들어요.", phases: [[POSES.nightCaptain, POSES.nightGuard]] },
+    { title: "미켈란젤로 〈아담의 창조〉", hint: "화면 중앙에서 두 손끝이 닿을 듯 가까워지게 해요.", phases: [[POSES.reachRight, POSES.reachLeft]] },
   ],
   music: [
     {
-      title: "같은 박", type: "beat", hint: "1·3박에 함께 팔을 올리고 2·4박에 내리세요.",
-      roles: ["1·3박에 양팔 올리기", "1·3박에 양팔 올리기"],
-      beats: [
-        [POSES.armsUp, POSES.armsUp], [POSES.ready, POSES.ready],
-        [POSES.armsUp, POSES.armsUp], [POSES.ready, POSES.ready],
-      ],
+      title: "같은 박",
+      hint: "다가오는 카드가 판정선에 닿을 때 같은 동작을 하세요.",
+      steps: [[POSES.beatCenter, POSES.beatCenter], [POSES.beatOpen, POSES.beatOpen], [POSES.beatUp, POSES.beatUp], [POSES.beatCenter, POSES.beatCenter]],
     },
     {
-      title: "주고받는 박", type: "beat", hint: "A는 홀수 박, B는 짝수 박에 팔을 들어 리듬을 주고받으세요.",
-      roles: ["1·3박에 팔 들기", "2·4박에 팔 들기"],
-      beats: [
-        [POSES.rightArmUp, POSES.ready], [POSES.ready, POSES.leftArmUp],
-        [POSES.leftArmUp, POSES.ready], [POSES.ready, POSES.rightArmUp],
-      ],
+      title: "주고받는 박",
+      hint: "PLAYER 1과 PLAYER 2가 한 박씩 번갈아 움직여요.",
+      steps: [[POSES.beatUp, POSES.neutral], [POSES.neutral, POSES.beatUp], [POSES.crossRight, POSES.neutral], [POSES.neutral, POSES.crossLeft]],
     },
     {
-      title: "높고 낮은 멜로디", type: "beat", hint: "높은 자세와 낮은 자세를 3박째에 서로 바꾸세요.",
-      roles: ["높게 시작해 3박에 낮추기", "낮게 시작해 3박에 높이기"],
-      beats: [
-        [POSES.armsUp, POSES.crouch], [POSES.armsUp, POSES.crouch],
-        [POSES.crouch, POSES.armsUp], [POSES.crouch, POSES.armsUp],
-      ],
+      title: "높고 낮은 멜로디",
+      hint: "높은 동작과 낮은 동작의 흐름을 함께 표현해요.",
+      steps: [[POSES.beatDown, POSES.beatDown], [POSES.beatUp, POSES.beatDown], [POSES.beatDown, POSES.beatUp], [POSES.beatUp, POSES.beatUp]],
     },
     {
-      title: "지휘자와 연주자", type: "beat", hint: "지휘 방향을 따라 왼쪽·오른쪽·아래·위로 움직이세요.",
-      roles: ["박자마다 방향을 제시하는 지휘자", "지휘 방향에 몸으로 반응하는 연주자"],
-      beats: [
-        [POSES.conductorLeft, POSES.leanLeft], [POSES.conductorRight, POSES.leanRight],
-        [POSES.ready, POSES.crouch], [POSES.armsUp, POSES.armsUp],
-      ],
+      title: "지휘자와 연주자",
+      hint: "PLAYER 1은 지휘하고 PLAYER 2는 리듬에 맞춰 연주해요.",
+      steps: [[POSES.conductorLeft, POSES.guitarRight], [POSES.conductorRight, POSES.guitarLeft], [POSES.conductorLeft, POSES.guitarRight], [POSES.beatOpen, POSES.beatOpen]],
     },
     {
-      title: "마지막 합주", type: "beat", hint: "8박 동안 동작을 주고받고 마지막 박에 함께 피날레를 완성하세요.",
-      roles: ["홀수 박을 이끌고 피날레", "짝수 박을 이어받고 피날레"],
-      beats: [
-        [POSES.rightArmUp, POSES.ready], [POSES.ready, POSES.leftArmUp],
-        [POSES.crouch, POSES.armsUp], [POSES.armsUp, POSES.crouch],
-        [POSES.outerA, POSES.outerB], [POSES.innerA, POSES.innerB],
-        [POSES.ready, POSES.ready], [POSES.armsUp, POSES.armsUp],
+      title: "마지막 합주",
+      hint: "8박의 동작을 이어 마지막 무대를 완성하세요.",
+      steps: [
+        [POSES.beatCenter, POSES.beatCenter], [POSES.crossRight, POSES.crossLeft],
+        [POSES.beatDown, POSES.beatDown], [POSES.beatUp, POSES.beatUp],
+        [POSES.conductorLeft, POSES.guitarRight], [POSES.conductorRight, POSES.guitarLeft],
+        [POSES.beatOpen, POSES.beatOpen], [POSES.victoryHigh, POSES.victoryHigh],
       ],
     },
   ],
@@ -327,6 +247,7 @@ const screens = [...document.querySelectorAll(".screen")];
 const video = $("#cameraVideo");
 const canvas = $("#poseCanvas");
 const ctx = canvas.getContext("2d");
+const bgmAudio = $("#bgmAudio");
 
 let selectedMode = "sports";
 let poseLandmarker = null;
@@ -348,14 +269,13 @@ let soundEnabled = true;
 let audioContext = null;
 let wakeLock = null;
 let smoothedScores = [0, 0];
-let activeStepIndex = 0;
-let completedStepScores = [];
-let bestStepScore = 0;
-let beatStartedAt = 0;
-let beatBestScores = [];
-let currentBeatIndex = 0;
-let currentBeatPhase = "waiting";
-let lastBeatMarker = "";
+let phaseIndex = 0;
+let phaseScores = [];
+let bestPhaseScore = 0;
+let musicState = null;
+let judgementTimer = null;
+let bgmMode = null;
+let bgmDuckTimer = null;
 
 function showScreen(id) {
   screens.forEach((screen) => screen.classList.toggle("is-active", screen.id === id));
@@ -374,12 +294,17 @@ document.querySelectorAll(".mode-card").forEach((button) => {
 $("#soundBtn").addEventListener("click", () => {
   soundEnabled = !soundEnabled;
   $("#soundBtn").textContent = soundEnabled ? "🔊" : "🔇";
-  if (soundEnabled) beep(620, 0.06);
+  bgmAudio.muted = !soundEnabled;
+  if (soundEnabled) {
+    primeAudio();
+    if (gameRunning) bgmAudio.play().catch(() => {});
+    beep(620, 0.06);
+  }
 });
 
-$("#startBtn").addEventListener("click", startGame);
+$("#startBtn").addEventListener("click", () => { primeAudio(); startGame(); });
 $("#retryBtn").addEventListener("click", startCameraAndModel);
-$("#replayBtn").addEventListener("click", startGame);
+$("#replayBtn").addEventListener("click", () => { primeAudio(); startGame(); });
 $("#changeModeBtn").addEventListener("click", goHome);
 $("#homeBtn").addEventListener("click", goHome);
 $("#rankingBtn").addEventListener("click", showRanking);
@@ -388,6 +313,7 @@ $("#resetRankingBtn").addEventListener("click", resetRanking);
 
 async function startGame() {
   stopCamera();
+  primeBgm(selectedMode);
   showScreen("gameScreen");
   roundIndex = 0;
   roundScores = [];
@@ -453,10 +379,12 @@ async function startCameraAndModel() {
 
     $("#cameraLoading").classList.add("is-hidden");
     gameRunning = true;
+    activateBgm(selectedMode);
     prepareRound();
     detectLoop();
   } catch (error) {
     console.error(error);
+    stopBgm();
     $("#loadingTitle").textContent = "카메라를 시작할 수 없어요";
     $("#loadingText").textContent = cameraErrorMessage(error);
     $("#retryBtn").hidden = false;
@@ -472,106 +400,82 @@ function cameraErrorMessage(error) {
 
 function prepareRound() {
   if (!gameRunning) return;
-  const baseMission = MISSIONS[selectedMode][roundIndex % MISSIONS[selectedMode].length];
-  currentMission = resolveMission(baseMission);
-  roundStartedAt = performance.now();
+  clearTimeout(judgementTimer);
+  $("#judgement").hidden = true;
+  currentMission = resolveMission(MISSIONS[selectedMode][roundIndex % MISSIONS[selectedMode].length]);
+  roundStartedAt = 0;
   holdStartedAt = null;
   bestRoundScore = 0;
+  bestPhaseScore = 0;
+  phaseIndex = 0;
+  phaseScores = [];
+  musicState = null;
   smoothedScores = [0, 0];
-  activeStepIndex = 0;
-  completedStepScores = [];
-  bestStepScore = 0;
-  beatStartedAt = 0;
-  beatBestScores = Array(currentMission.beats?.length || 0).fill(0);
-  currentBeatIndex = 0;
-  currentBeatPhase = "waiting";
-  lastBeatMarker = "";
   resolvingRound = false;
   $("#roundLabel").textContent = `ROUND ${roundIndex + 1}`;
-  $("#modeLabel").textContent = currentMission.artist
-    ? `${MODE_LABELS[selectedMode]} · ${currentMission.artist}`
-    : MODE_LABELS[selectedMode];
+  $("#modeLabel").textContent = MODE_LABELS[selectedMode];
   $("#missionTitle").textContent = currentMission.title;
   $("#missionHint").textContent = currentMission.hint;
-  $("#timerValue").textContent = missionDurationSeconds(currentMission);
-  $("#statusText").textContent = currentMission.type === "beat"
-    ? "먼저 한 번 연습한 뒤 같은 순서로 도전합니다"
-    : "두 사람이 안내선 안에 서 주세요";
+  $("#timerValue").textContent = selectedMode === "music" ? rhythmRoundSeconds(currentMission) : ROUND_SECONDS;
+  $("#statusText").textContent = selectedMode === "music" ? "다가오는 동작 카드를 확인하세요" : "두 사람이 안내선 안에 서 주세요";
   $("#holdFill").style.width = "0%";
   $("#p1Score").textContent = "준비";
   $("#p2Score").textContent = "준비";
-  updateRoleLabels();
-  setupBeatPanel();
+  $("#musicHud").hidden = selectedMode !== "music";
+  $("#holdFill").parentElement.hidden = selectedMode === "music";
+  $("#comboValue").textContent = "0";
+  $("#unityValue").textContent = "0%";
+  $("#unityFill").style.width = "0%";
+  renderBeatProgress();
   countdown().then(() => {
-    if (!gameRunning || resolvingRound) return;
+    if (!gameRunning) return;
     roundStartedAt = performance.now();
-    if (currentMission.type === "beat") {
-      beatStartedAt = roundStartedAt;
-      currentBeatPhase = "practice";
-      setBeatDisplay(0, "practice");
-    }
+    if (selectedMode === "music") initializeMusicRound(roundStartedAt);
   });
 }
 
-function resolveMission(baseMission) {
-  if (!baseMission.variants?.length) return { ...baseMission };
-  const variant = baseMission.variants[Math.floor(Math.random() * baseMission.variants.length)];
-  return {
-    ...baseMission,
-    ...variant,
-    hint: `${baseMission.hint} · 방향: ${variant.direction}`,
-  };
-}
-
-function missionDurationSeconds(mission) {
-  if (mission.type !== "beat") return ROUND_SECONDS;
-  const totalMs = mission.beats.length * MUSIC_BEAT_MS * 2 + MUSIC_TRANSITION_MS;
-  return Math.ceil(totalMs / 1000);
-}
-
-function activeMissionStep() {
-  if (!currentMission) return null;
-  if (currentMission.type === "sequence") return currentMission.steps[activeStepIndex];
-  if (currentMission.type === "beat") return { poses: currentMission.beats[currentBeatIndex] || currentMission.beats[0] };
-  return currentMission;
-}
-
-function activeTargetPoses() {
-  return activeMissionStep()?.poses || [POSES.ready, POSES.ready];
-}
-
-function updateRoleLabels() {
-  const step = activeMissionStep();
-  const roles = step?.roles || currentMission?.roles || ["왼쪽 역할", "오른쪽 역할"];
-  $("#p1Role").textContent = roles[0];
-  $("#p2Role").textContent = roles[1];
-}
-
-function setupBeatPanel() {
-  const panel = $("#beatPanel");
-  panel.hidden = currentMission.type !== "beat";
-  if (panel.hidden) return;
-  $("#beatPhase").textContent = "연습 준비";
-  $("#beatDots").innerHTML = currentMission.beats
-    .map((_, index) => `<span class="beat-dot${index === 0 ? " is-downbeat" : ""}">${index + 1}</span>`)
-    .join("");
-}
-
-function setBeatDisplay(index, phase) {
-  currentBeatIndex = Math.max(0, Math.min(index, currentMission.beats.length - 1));
-  currentBeatPhase = phase;
-  const labels = { practice: "연습", transition: "도전 준비", challenge: "도전" };
-  $("#beatPhase").textContent = labels[phase] || "준비";
-  [...$("#beatDots").children].forEach((dot, dotIndex) => {
-    dot.classList.toggle("is-active", phase !== "transition" && dotIndex === currentBeatIndex);
-  });
-  updateRoleLabels();
-
-  const marker = `${phase}-${currentBeatIndex}`;
-  if (marker !== lastBeatMarker && phase !== "transition") {
-    beep(currentBeatIndex === 0 ? 760 : 560, currentBeatIndex === 0 ? 0.12 : 0.07);
-    lastBeatMarker = marker;
+function resolveMission(mission) {
+  const resolved = { ...mission };
+  if (mission.phases) resolved.phases = mission.phases.map((pair) => [...pair]);
+  if (mission.steps) resolved.steps = mission.steps.map((pair) => [...pair]);
+  if (mission.randomSwap && Math.random() < 0.5) {
+    resolved.phases = resolved.phases.map(([first, second]) => [second, first]);
+    resolved.hint = "이번에는 PLAYER 1이 골키퍼, PLAYER 2가 슈터예요.";
+  } else if (mission.randomSwap) {
+    resolved.hint = "이번에는 PLAYER 1이 슈터, PLAYER 2가 골키퍼예요.";
   }
+  return resolved;
+}
+
+function rhythmRoundSeconds(mission) {
+  return Math.ceil((MUSIC_PREVIEW_MS + (mission.steps.length - 1) * MUSIC_BEAT_MS + MUSIC_WINDOW_MS) / 1000);
+}
+
+function initializeMusicRound(startedAt) {
+  const intervalSeconds = MUSIC_BEAT_MS / 1000;
+  const canUseAudioClock = bgmMode === "music" && !bgmAudio.paused && Number.isFinite(bgmAudio.currentTime);
+  const audioNow = canUseAudioClock ? bgmAudio.currentTime : 0;
+  const minimumFirstHit = audioNow + MUSIC_PREVIEW_MS / 1000;
+  const gridSteps = Math.max(0, Math.ceil((minimumFirstHit - MUSIC_BEAT_OFFSET_SECONDS) / intervalSeconds));
+  const firstAudioHit = MUSIC_BEAT_OFFSET_SECONDS + gridSteps * intervalSeconds;
+  const audioTimes = canUseAudioClock
+    ? currentMission.steps.map((_, index) => firstAudioHit + index * intervalSeconds)
+    : null;
+  const firstDelayMs = canUseAudioClock ? (firstAudioHit - audioNow) * 1000 : MUSIC_PREVIEW_MS;
+  musicState = {
+    index: 0,
+    results: [],
+    combo: 0,
+    maxCombo: 0,
+    bestScore: 0,
+    bestOffset: Infinity,
+    cueBeeped: false,
+    hitBeeped: false,
+    finishing: false,
+    audioTimes,
+    times: currentMission.steps.map((_, index) => startedAt + firstDelayMs + index * MUSIC_BEAT_MS),
+  };
+  renderBeatProgress();
 }
 
 async function countdown() {
@@ -622,9 +526,6 @@ function renderFrame(detectedPoses) {
   ctx.clearRect(0, 0, width, height);
 
   if (!currentMission) return;
-  if (currentMission.type === "beat" && $("#countdown").hidden && beatStartedAt) {
-    syncBeatClock(performance.now());
-  }
 
   const sorted = detectedPoses
     .map(mirrorLandmarks)
@@ -632,8 +533,8 @@ function renderFrame(detectedPoses) {
     .sort((a, b) => bodyCenterX(a) - bodyCenterX(b));
 
   const playerPoses = [sorted[0] || null, sorted[1] || null];
-  const targetPoses = activeTargetPoses();
-  const rawScores = playerPoses.map((pose, index) => pose ? scorePose(pose, targetPoses[index]) : 0);
+  const targetPair = currentTargetPair();
+  const rawScores = playerPoses.map((pose, index) => pose && targetPair ? scorePose(pose, targetPair[index]) : 0);
   const scores = rawScores.map((score, index) => {
     if (!playerPoses[index]) return 0;
     const previous = smoothedScores[index];
@@ -643,13 +544,26 @@ function renderFrame(detectedPoses) {
   const colors = scores.map(scoreColor);
 
   drawZones(width, height);
-  drawTarget(targetPoses[0], 0, colors[0], width, height);
-  drawTarget(targetPoses[1], 1, colors[1], width, height);
+  if (selectedMode === "music") drawRhythmLane(width, height);
+  if (targetPair) {
+    const targetColors = selectedMode === "music" ? ["#2ee9ff", "#ff9d2e"] : colors;
+    drawTarget(targetPair[0], 0, targetColors[0], width, height);
+    drawTarget(targetPair[1], 1, targetColors[1], width, height);
+  }
   playerPoses.forEach((pose, index) => {
     if (pose) drawDetected(pose, colors[index], width, height);
   });
 
-  updateGameState(playerPoses, scores);
+  if (selectedMode === "music") updateMusicState(playerPoses, scores);
+  else updateGameState(playerPoses, scores);
+}
+
+function currentTargetPair() {
+  if (selectedMode === "music") {
+    const index = musicState?.index ?? 0;
+    return currentMission.steps[Math.min(index, currentMission.steps.length - 1)];
+  }
+  return currentMission.phases[Math.min(phaseIndex, currentMission.phases.length - 1)];
 }
 
 function mirrorLandmarks(landmarks) {
@@ -666,195 +580,180 @@ function bodyCenterX(pose) {
 }
 
 function updateGameState(playerPoses, scores) {
-  if (resolvingRound || $("#countdown").hidden === false) return;
-  if (currentMission.type === "beat") {
-    updateBeatGame(playerPoses, scores);
-    return;
-  }
-  if (currentMission.type === "sequence") {
-    updateSequenceGame(playerPoses, scores);
-    return;
-  }
-  updateHoldGame(playerPoses, scores);
-}
-
-function updateHoldGame(playerPoses, scores) {
+  if (resolvingRound || $("#countdown").hidden === false || !roundStartedAt) return;
   const now = performance.now();
   const remaining = Math.max(0, ROUND_SECONDS - Math.floor((now - roundStartedAt) / 1000));
   $("#timerValue").textContent = remaining;
-  updateLiveScoreLabels(playerPoses, scores);
 
-  const readiness = playerReadinessMessage(playerPoses);
-  if (readiness) {
+  $("#p1Score").textContent = playerPoses[0] ? `${scores[0]}점` : "찾는 중";
+  $("#p2Score").textContent = playerPoses[1] ? `${scores[1]}점` : "찾는 중";
+
+  if (!playerPoses[0] || !playerPoses[1]) {
     holdStartedAt = null;
     $("#holdFill").style.width = "0%";
-    $("#statusText").textContent = readiness;
+    $("#statusText").textContent = "두 사람의 전신이 모두 보이게 서 주세요";
+  } else if (bodyCenterX(playerPoses[0]) > 0.5 || bodyCenterX(playerPoses[1]) < 0.5) {
+    holdStartedAt = null;
+    $("#holdFill").style.width = "0%";
+    $("#statusText").textContent = "한 명씩 좌우 안내 영역에 나누어 서 주세요";
   } else {
-    const pairScore = currentMission.pairRule === "handsNear" ? handConnectionScore(playerPoses) : null;
-    const roundScore = combinedRoundScore(scores, pairScore);
+    const roundScore = teamworkScore(scores[0], scores[1]);
     bestRoundScore = Math.max(bestRoundScore, roundScore);
-    const pairReady = pairScore === null || pairScore >= 55;
-    if (scores[0] >= PASS_SCORE && scores[1] >= PASS_SCORE && pairReady) {
+    bestPhaseScore = Math.max(bestPhaseScore, roundScore);
+    if (scores[0] >= PASS_SCORE && scores[1] >= PASS_SCORE) {
       if (!holdStartedAt) holdStartedAt = now;
       const progress = Math.min(1, (now - holdStartedAt) / HOLD_REQUIRED_MS);
       $("#holdFill").style.width = `${Math.round(progress * 100)}%`;
       $("#statusText").textContent = progress < 1 ? "좋아요! 그대로 멈춰 주세요" : "완벽한 순간!";
-      if (progress >= 1) finishRound(roundScore);
+      if (progress >= 1) completeStaticPhase(roundScore);
     } else {
       holdStartedAt = null;
       $("#holdFill").style.width = "0%";
-      $("#statusText").textContent = !pairReady
-        ? "두 사람의 뻗은 손을 화면 중앙에서 더 가까이 맞춰 주세요"
-        : feedbackForScores(scores);
-    }
-  }
-
-  if (remaining <= 0) finishRound(bestRoundScore);
-}
-
-function updateSequenceGame(playerPoses, scores) {
-  const now = performance.now();
-  const remaining = Math.max(0, ROUND_SECONDS - Math.floor((now - roundStartedAt) / 1000));
-  $("#timerValue").textContent = remaining;
-  updateLiveScoreLabels(playerPoses, scores);
-
-  const step = currentMission.steps[activeStepIndex];
-  const readiness = playerReadinessMessage(playerPoses);
-  if (readiness) {
-    holdStartedAt = null;
-    $("#holdFill").style.width = "0%";
-    $("#statusText").textContent = readiness;
-  } else {
-    const stepScore = teamworkScore(scores[0], scores[1]);
-    bestStepScore = Math.max(bestStepScore, stepScore);
-    if (scores[0] >= PASS_SCORE && scores[1] >= PASS_SCORE) {
-      if (!holdStartedAt) holdStartedAt = now;
-      const progress = Math.min(1, (now - holdStartedAt) / SEQUENCE_HOLD_MS);
-      $("#holdFill").style.width = `${Math.round(progress * 100)}%`;
-      $("#statusText").textContent = `${step.label} · 그대로 유지하세요`;
-      if (progress >= 1) completeSequenceStep(stepScore);
-    } else {
-      holdStartedAt = null;
-      $("#holdFill").style.width = "0%";
-      $("#statusText").textContent = `${step.label} · ${feedbackForScores(scores)}`;
+      $("#statusText").textContent = feedbackForScores(scores);
     }
   }
 
   if (remaining <= 0) {
-    const captured = [...completedStepScores, bestStepScore];
-    const score = Math.round(captured.reduce((sum, value) => sum + value, 0) / currentMission.steps.length);
-    finishRound(score);
+    phaseScores.push(bestPhaseScore);
+    finishRound(average(phaseScores));
   }
 }
 
-function completeSequenceStep(score) {
-  completedStepScores.push(score);
-  activeStepIndex += 1;
+function completeStaticPhase(score) {
+  phaseScores.push(score);
+  if (phaseIndex >= currentMission.phases.length - 1) {
+    finishRound(average(phaseScores));
+    return;
+  }
+  phaseIndex += 1;
   holdStartedAt = null;
-  bestStepScore = 0;
+  bestPhaseScore = 0;
   smoothedScores = [0, 0];
   $("#holdFill").style.width = "0%";
+  $("#missionHint").textContent = currentMission.phaseHints?.[phaseIndex] || `${phaseIndex + 1}단계 동작을 완성하세요.`;
+  $("#statusText").textContent = `1단계 성공! ${phaseIndex + 1}단계를 준비하세요`;
   beep(760, 0.1);
-
-  if (activeStepIndex >= currentMission.steps.length) {
-    const total = completedStepScores.reduce((sum, value) => sum + value, 0);
-    finishRound(Math.round(total / completedStepScores.length));
-    return;
-  }
-
-  updateRoleLabels();
-  const nextStep = currentMission.steps[activeStepIndex];
-  $("#statusText").textContent = `${nextStep.label} 준비!`;
 }
 
-function syncBeatClock(now) {
-  if (!beatStartedAt || currentMission.type !== "beat") return;
-  const practiceDuration = currentMission.beats.length * MUSIC_BEAT_MS;
-  const elapsed = now - beatStartedAt;
-
-  if (elapsed < practiceDuration) {
-    setBeatDisplay(Math.floor(elapsed / MUSIC_BEAT_MS), "practice");
-    return;
-  }
-  if (elapsed < practiceDuration + MUSIC_TRANSITION_MS) {
-    setBeatDisplay(0, "transition");
-    return;
-  }
-
-  const challengeElapsed = elapsed - practiceDuration - MUSIC_TRANSITION_MS;
-  if (challengeElapsed < practiceDuration) {
-    setBeatDisplay(Math.floor(challengeElapsed / MUSIC_BEAT_MS), "challenge");
-    return;
-  }
-
-  currentBeatPhase = "finished";
-}
-
-function updateBeatGame(playerPoses, scores) {
+function updateMusicState(playerPoses, scores) {
+  if (resolvingRound || $("#countdown").hidden === false || !musicState || musicState.finishing) return;
   const now = performance.now();
-  syncBeatClock(now);
-  const durationMs = currentMission.beats.length * MUSIC_BEAT_MS * 2 + MUSIC_TRANSITION_MS;
-  const remaining = Math.max(0, Math.ceil((durationMs - (now - beatStartedAt)) / 1000));
+  const usingAudioClock = musicState.audioTimes && bgmMode === "music" && !bgmAudio.paused;
+  const offset = usingAudioClock
+    ? (bgmAudio.currentTime - musicState.audioTimes[musicState.index]) * 1000
+    : now - musicState.times[musicState.index];
+  const remaining = usingAudioClock
+    ? Math.max(0, Math.ceil(musicState.audioTimes.at(-1) + MUSIC_WINDOW_MS / 1000 - bgmAudio.currentTime))
+    : Math.max(0, Math.ceil((musicState.times.at(-1) + MUSIC_WINDOW_MS - now) / 1000));
   $("#timerValue").textContent = remaining;
-  updateLiveScoreLabels(playerPoses, scores);
-
-  if (currentBeatPhase === "finished") {
-    const score = Math.round(beatBestScores.reduce((sum, value) => sum + value, 0) / beatBestScores.length);
-    finishRound(score);
-    return;
-  }
-  if (currentBeatPhase === "transition") {
-    $("#statusText").textContent = "연습 완료! 이제 실제 도전이 시작됩니다";
-    $("#holdFill").style.width = "0%";
-    return;
-  }
-
-  const readiness = playerReadinessMessage(playerPoses);
-  if (readiness) {
-    $("#statusText").textContent = readiness;
-  } else if (currentBeatPhase === "practice") {
-    $("#statusText").textContent = `연습 ${currentBeatIndex + 1}박 · 안내선의 변화를 익히세요`;
-  } else {
-    const beatScore = teamworkScore(scores[0], scores[1]);
-    beatBestScores[currentBeatIndex] = Math.max(beatBestScores[currentBeatIndex], beatScore);
-    $("#statusText").textContent = `도전 ${currentBeatIndex + 1}박 · 박자와 동작을 함께 맞추세요`;
-  }
-
-  const phaseStart = currentBeatPhase === "practice"
-    ? beatStartedAt
-    : beatStartedAt + currentMission.beats.length * MUSIC_BEAT_MS + MUSIC_TRANSITION_MS;
-  const beatProgress = ((now - phaseStart) % MUSIC_BEAT_MS) / MUSIC_BEAT_MS;
-  $("#holdFill").style.width = `${Math.round(beatProgress * 100)}%`;
-}
-
-function updateLiveScoreLabels(playerPoses, scores) {
   $("#p1Score").textContent = playerPoses[0] ? `${scores[0]}점` : "찾는 중";
   $("#p2Score").textContent = playerPoses[1] ? `${scores[1]}점` : "찾는 중";
-}
 
-function playerReadinessMessage(playerPoses) {
-  if (!playerPoses[0] || !playerPoses[1]) return "두 사람의 전신이 모두 보이게 서 주세요";
-  if (bodyCenterX(playerPoses[0]) > 0.5 || bodyCenterX(playerPoses[1]) < 0.5) {
-    return "한 명씩 좌우 안내 영역에 나누어 서 주세요";
+  if (!playerPoses[0] || !playerPoses[1]) {
+    $("#statusText").textContent = "두 사람의 전신이 모두 보이게 서 주세요";
+  } else if (bodyCenterX(playerPoses[0]) > 0.5 || bodyCenterX(playerPoses[1]) < 0.5) {
+    $("#statusText").textContent = "한 명씩 좌우 안내 영역에 나누어 서 주세요";
+  } else if (offset < -MUSIC_WINDOW_MS) {
+    $("#statusText").textContent = "카드가 판정선에 닿는 순간 동작하세요";
+  } else {
+    $("#statusText").textContent = "NOW! 안내선에 몸을 맞추세요";
   }
-  return "";
+
+  if (Math.abs(offset) <= MUSIC_WINDOW_MS && playerPoses[0] && playerPoses[1]) {
+    const score = teamworkScore(scores[0], scores[1]);
+    if (score > musicState.bestScore || (score === musicState.bestScore && Math.abs(offset) < musicState.bestOffset)) {
+      musicState.bestScore = score;
+      musicState.bestOffset = Math.abs(offset);
+    }
+  }
+
+  if (offset >= -Math.min(700, MUSIC_BEAT_MS / 2) && !musicState.cueBeeped) {
+    musicState.cueBeeped = true;
+    beep(330, 0.045);
+  }
+
+  if (offset >= 0 && !musicState.hitBeeped) {
+    musicState.hitBeeped = true;
+    beep(880, 0.07);
+  }
+
+  if (offset > MUSIC_WINDOW_MS) finalizeMusicBeat();
 }
 
-function combinedRoundScore(scores, pairScore) {
-  const poseScore = teamworkScore(scores[0], scores[1]);
-  if (pairScore === null) return poseScore;
-  return Math.round(poseScore * 0.85 + pairScore * 0.15);
+function finalizeMusicBeat() {
+  const score = musicState.bestScore;
+  const offset = musicState.bestOffset;
+  let judgement = "MISS";
+  let points = 0;
+  if (score >= 88 && offset <= 320) {
+    judgement = "PERFECT";
+    points = 100;
+  } else if (score >= 68 && offset <= MUSIC_WINDOW_MS) {
+    judgement = "GOOD";
+    points = Math.max(70, Math.min(89, score));
+  }
+
+  if (judgement === "MISS") musicState.combo = 0;
+  else musicState.combo += 1;
+  musicState.maxCombo = Math.max(musicState.maxCombo, musicState.combo);
+  musicState.results.push({ judgement, points });
+  showJudgement(judgement, points);
+
+  musicState.index += 1;
+  musicState.bestScore = 0;
+  musicState.bestOffset = Infinity;
+  musicState.cueBeeped = false;
+  musicState.hitBeeped = false;
+  smoothedScores = [0, 0];
+  updateMusicHud();
+
+  if (musicState.index >= currentMission.steps.length) {
+    musicState.finishing = true;
+    const roundScore = average(musicState.results.map((result) => result.points));
+    setTimeout(() => finishRound(roundScore), 850);
+  }
 }
 
-function handConnectionScore(playerPoses) {
-  const leftWrists = [playerPoses[0][15], playerPoses[0][16]].filter(Boolean);
-  const rightWrists = [playerPoses[1][15], playerPoses[1][16]].filter(Boolean);
-  let minimum = Infinity;
-  leftWrists.forEach((left) => rightWrists.forEach((right) => {
-    minimum = Math.min(minimum, Math.hypot(left.x - right.x, left.y - right.y));
-  }));
-  if (!Number.isFinite(minimum)) return 0;
-  return Math.round(Math.max(0, Math.min(100, (0.28 - minimum) / 0.22 * 100)));
+function showJudgement(judgement, points) {
+  const element = $("#judgement");
+  clearTimeout(judgementTimer);
+  duckBgm(620);
+  element.className = `judgement is-${judgement.toLowerCase()}`;
+  $("#judgementText").textContent = judgement;
+  $("#judgementScore").textContent = points ? `+${points}` : "다음 박자를 준비!";
+  element.hidden = false;
+  if (judgement === "PERFECT") successChime(95);
+  else if (judgement === "GOOD") beep(620, 0.1);
+  else beep(180, 0.16);
+  judgementTimer = setTimeout(() => { element.hidden = true; }, 680);
+}
+
+function updateMusicHud() {
+  const points = musicState.results.map((result) => result.points);
+  const gauge = points.length ? average(points) : 0;
+  $("#comboValue").textContent = musicState.combo;
+  $("#unityValue").textContent = `${gauge}%`;
+  $("#unityFill").style.width = `${gauge}%`;
+  renderBeatProgress();
+}
+
+function renderBeatProgress() {
+  if (selectedMode !== "music" || !currentMission?.steps) {
+    $("#beatProgress").innerHTML = "";
+    return;
+  }
+  const results = musicState?.results || [];
+  const current = musicState?.index ?? 0;
+  $("#beatProgress").innerHTML = currentMission.steps.map((_, index) => {
+    const result = results[index];
+    const state = result ? `is-${result.judgement.toLowerCase()}` : index === current ? "is-current" : "";
+    return `<i class="${state}" title="${index + 1}박"></i>`;
+  }).join("");
+}
+
+function average(values) {
+  if (!values.length) return 0;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
 }
 
 function teamworkScore(a, b) {
@@ -864,8 +763,8 @@ function teamworkScore(a, b) {
 }
 
 function feedbackForScores(scores) {
-  if (scores[0] >= PASS_SCORE && scores[1] < PASS_SCORE) return "PLAYER B가 안내선에 조금 더 맞춰 주세요";
-  if (scores[1] >= PASS_SCORE && scores[0] < PASS_SCORE) return "PLAYER A가 안내선에 조금 더 맞춰 주세요";
+  if (scores[0] >= PASS_SCORE && scores[1] < PASS_SCORE) return "PLAYER 2가 안내선에 조금 더 맞춰 주세요";
+  if (scores[1] >= PASS_SCORE && scores[0] < PASS_SCORE) return "PLAYER 1이 안내선에 조금 더 맞춰 주세요";
   if (Math.max(...scores) >= 60) return "거의 다 왔어요! 팔과 다리 각도를 확인하세요";
   return "반투명 안내선에 몸을 맞춰 보세요";
 }
@@ -873,7 +772,9 @@ function feedbackForScores(scores) {
 async function finishRound(score) {
   if (resolvingRound) return;
   resolvingRound = true;
-  roundScores.push(Math.max(0, score));
+  duckBgm(1200);
+  score = Math.max(0, Math.round(score));
+  roundScores.push(score);
   const flash = $("#roundFlash");
   $("#roundScore").textContent = score;
   flash.querySelector("span").textContent = score >= 90 ? "환상의 호흡!" : score >= 75 ? "일심동체 성공!" : "도전 완료!";
@@ -889,6 +790,7 @@ async function finishRound(score) {
 function showResults() {
   gameRunning = false;
   stopCamera();
+  stopBgm();
   const total = roundScores.reduce((sum, value) => sum + value, 0);
   saveScore(total);
   const best = getScores()[0]?.score ?? total;
@@ -896,10 +798,7 @@ function showResults() {
   $("#bestScore").textContent = `${best}점`;
   $("#resultMessage").textContent = resultMessage(total);
   $("#scoreSummary").innerHTML = roundScores
-    .map((score, index) => {
-      const title = MISSIONS[selectedMode][index]?.title || `ROUND ${index + 1}`;
-      return `<span class="round-chip">${index + 1}. ${title} <b>${score}점</b></span>`;
-    })
+    .map((score, index) => `<span class="round-chip">ROUND ${index + 1} <b>${score}점</b></span>`)
     .join("");
   showScreen("resultScreen");
   successChime(Math.round(total / ROUNDS_PER_GAME));
@@ -944,6 +843,97 @@ function scoreColor(score) {
   if (score >= PASS_SCORE) return "#65ff8e";
   if (score >= 55) return "#ffd53f";
   return "#ff5b6e";
+}
+
+function drawRhythmLane(width, height) {
+  if (!musicState) return;
+  const now = performance.now();
+  const vanishingY = height * 0.08;
+  const hitY = height * 0.72;
+
+  ctx.save();
+  const laneGradient = ctx.createLinearGradient(0, vanishingY, 0, height);
+  laneGradient.addColorStop(0, "rgba(20, 231, 255, 0.02)");
+  laneGradient.addColorStop(1, "rgba(46, 233, 255, 0.14)");
+  ctx.fillStyle = laneGradient;
+  ctx.beginPath();
+  ctx.moveTo(width * 0.44, vanishingY);
+  ctx.lineTo(width * 0.08, hitY + height * 0.12);
+  ctx.lineTo(width * 0.92, hitY + height * 0.12);
+  ctx.lineTo(width * 0.56, vanishingY);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = "rgba(46, 233, 255, .35)";
+  ctx.lineWidth = 2;
+  ctx.shadowColor = "#2ee9ff";
+  ctx.shadowBlur = 10;
+  drawLine({ x: width * 0.44, y: vanishingY }, { x: width * 0.08, y: hitY + height * 0.12 });
+  drawLine({ x: width * 0.56, y: vanishingY }, { x: width * 0.92, y: hitY + height * 0.12 });
+
+  ctx.strokeStyle = "rgba(184, 255, 54, .92)";
+  ctx.lineWidth = 4;
+  ctx.setLineDash([16, 8]);
+  ctx.beginPath();
+  ctx.moveTo(width * 0.12, hitY);
+  ctx.lineTo(width * 0.88, hitY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#b8ff36";
+  ctx.font = `900 ${Math.max(12, width * 0.012)}px system-ui`;
+  ctx.textAlign = "center";
+  ctx.fillText("HIT LINE", width * 0.5, hitY + 22);
+
+  for (let index = musicState.index; index < currentMission.steps.length; index += 1) {
+    const timeUntil = musicState.audioTimes && bgmMode === "music" && !bgmAudio.paused
+      ? (musicState.audioTimes[index] - bgmAudio.currentTime) * 1000
+      : musicState.times[index] - now;
+    if (timeUntil > MUSIC_PREVIEW_MS || timeUntil < -MUSIC_WINDOW_MS) continue;
+    const progress = Math.max(0, Math.min(1, 1 - timeUntil / MUSIC_PREVIEW_MS));
+    const eased = progress * progress * (3 - 2 * progress);
+    const y = vanishingY + (hitY - vanishingY) * eased;
+    const scale = 0.28 + eased * 0.72;
+    drawBeatCard(currentMission.steps[index], index, width * 0.5, y, scale, width, height);
+  }
+  ctx.restore();
+}
+
+function drawBeatCard(pair, index, centerX, centerY, scale, width, height) {
+  const cardWidth = Math.min(width * 0.26, 250) * scale;
+  const cardHeight = Math.min(height * 0.18, 118) * scale;
+  const x = centerX - cardWidth / 2;
+  const y = centerY - cardHeight / 2;
+  ctx.save();
+  ctx.shadowColor = index === musicState.index ? "#b8ff36" : "#2ee9ff";
+  ctx.shadowBlur = 18 * scale;
+  ctx.fillStyle = "rgba(3, 13, 31, .88)";
+  ctx.strokeStyle = index === musicState.index ? "rgba(184, 255, 54, .95)" : "rgba(46, 233, 255, .7)";
+  ctx.lineWidth = Math.max(1.5, 3 * scale);
+  roundedRect(ctx, x, y, cardWidth, cardHeight, Math.max(5, 12 * scale));
+  ctx.fill();
+  ctx.stroke();
+  drawMiniPose(pair[0], x + cardWidth * 0.28, y + cardHeight * 0.12, cardWidth * 0.31, cardHeight * 0.76, "#2ee9ff");
+  drawMiniPose(pair[1], x + cardWidth * 0.72, y + cardHeight * 0.12, cardWidth * 0.31, cardHeight * 0.76, "#ff9d2e");
+  ctx.fillStyle = "rgba(255,255,255,.88)";
+  ctx.font = `900 ${Math.max(8, 13 * scale)}px system-ui`;
+  ctx.textAlign = "center";
+  ctx.fillText(`${index + 1} BEAT`, centerX, y - Math.max(5, 8 * scale));
+  ctx.restore();
+}
+
+function drawMiniPose(target, centerX, top, poseWidth, poseHeight, color) {
+  const toCanvas = (coords) => ({
+    x: centerX + (coords[0] - 0.5) * poseWidth,
+    y: top + coords[1] * poseHeight,
+  });
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineCap = "round";
+  ctx.lineWidth = Math.max(1.2, poseWidth * 0.045);
+  GUIDE_CONNECTIONS.forEach(([a, b]) => drawLine(toCanvas(target[a]), toCanvas(target[b])));
+  [0, 15, 16, 27, 28].forEach((index) => drawNode(toCanvas(target[index]), color, Math.max(1.2, poseWidth * 0.035)));
+  ctx.restore();
 }
 
 function drawZones(width, height) {
@@ -1068,6 +1058,7 @@ function resetRanking() {
 function goHome() {
   gameRunning = false;
   stopCamera();
+  stopBgm();
   showScreen("introScreen");
 }
 
@@ -1097,10 +1088,64 @@ async function enterImmersiveMode() {
 
 function wait(ms) { return new Promise((resolve) => setTimeout(resolve, ms)); }
 
-function beep(frequency, duration) {
+function setBgmSource(mode) {
+  const track = BGM_TRACKS[mode];
+  if (!track || bgmMode === mode) return track;
+  bgmMode = mode;
+  bgmAudio.src = track.src;
+  bgmAudio.load();
+  return track;
+}
+
+function primeBgm(mode) {
+  const track = setBgmSource(mode);
+  if (!track) return;
+  bgmAudio.muted = !soundEnabled;
+  bgmAudio.volume = 0;
+  bgmAudio.currentTime = 0;
+  bgmAudio.play().catch(() => {});
+}
+
+function activateBgm(mode) {
+  const track = setBgmSource(mode);
+  if (!track) return;
+  clearTimeout(bgmDuckTimer);
+  bgmAudio.currentTime = 0;
+  bgmAudio.volume = track.volume;
+  bgmAudio.muted = !soundEnabled;
+  bgmAudio.play().catch(() => {});
+}
+
+function duckBgm(duration = 600) {
+  const track = BGM_TRACKS[bgmMode];
+  if (!track || bgmAudio.paused) return;
+  clearTimeout(bgmDuckTimer);
+  bgmAudio.volume = track.volume * 0.42;
+  bgmDuckTimer = setTimeout(() => {
+    if (BGM_TRACKS[bgmMode]) bgmAudio.volume = BGM_TRACKS[bgmMode].volume;
+  }, duration);
+}
+
+function stopBgm() {
+  clearTimeout(bgmDuckTimer);
+  bgmAudio.pause();
+  bgmAudio.currentTime = 0;
+  bgmMode = null;
+}
+
+function primeAudio() {
   if (!soundEnabled) return;
   try {
     audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+    if (audioContext.state === "suspended") audioContext.resume().catch(() => {});
+  } catch { /* 오디오 미지원 환경 */ }
+}
+
+function beep(frequency, duration) {
+  if (!soundEnabled) return;
+  try {
+    primeAudio();
+    if (!audioContext) return;
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
     oscillator.type = "sine";
@@ -1120,11 +1165,12 @@ function successChime(score) {
 }
 
 window.addEventListener("resize", resizeCanvas);
-window.addEventListener("beforeunload", stopCamera);
+window.addEventListener("beforeunload", () => { stopCamera(); stopBgm(); });
 document.addEventListener("visibilitychange", async () => {
   if (document.visibilityState === "visible" && "wakeLock" in navigator && gameRunning) {
     try { wakeLock = await navigator.wakeLock.request("screen"); } catch { /* ignore */ }
   }
+  if (document.visibilityState === "visible" && gameRunning) bgmAudio.play().catch(() => {});
 });
 
 if ("serviceWorker" in navigator) {

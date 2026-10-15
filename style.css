@@ -269,65 +269,67 @@ main { min-height: 0; position: relative; }
 }
 .player-label b { display: block; font-size: 0.62rem; letter-spacing: 0.13em; color: var(--cyan); }
 .player-label span { font-weight: 900; }
-.player-label small {
-  display: block;
-  max-width: 240px;
-  margin-top: 3px;
-  color: var(--muted);
-  font-size: 0.68rem;
-  line-height: 1.25;
-}
 .player-one { left: 14px; }
 .player-two { right: 14px; text-align: right; }
+.player-two b { color: var(--orange); }
 
-.beat-panel {
+.music-hud {
   position: absolute;
   z-index: 7;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 48px;
-  padding: 8px 14px;
-  border: 1px solid rgba(255, 213, 63, 0.46);
-  border-radius: 15px;
-  background: rgba(2, 11, 25, 0.88);
-  box-shadow: 0 0 22px rgba(255, 213, 63, 0.12);
-  backdrop-filter: blur(12px);
-}
-.beat-panel > strong {
-  min-width: 48px;
-  color: var(--warning);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-align: center;
-}
-.beat-dots { display: flex; gap: 7px; }
-.beat-dot {
-  width: 34px;
-  height: 34px;
+  inset: 12px 150px auto;
   display: grid;
-  place-items: center;
-  border: 1px solid rgba(128, 246, 255, 0.35);
-  border-radius: 50%;
-  color: var(--muted);
-  background: rgba(46, 233, 255, 0.07);
-  font-size: 0.8rem;
-  font-weight: 950;
-  transition: 120ms ease;
+  grid-template-columns: 94px minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  pointer-events: none;
 }
-.beat-dot.is-active {
-  color: #03101b;
-  background: var(--cyan);
-  border-color: white;
-  transform: scale(1.22);
-  box-shadow: 0 0 20px rgba(46, 233, 255, 0.85);
+.combo-box {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid rgba(184, 255, 54, 0.42);
+  border-radius: 12px;
+  background: rgba(2, 11, 25, 0.78);
+  box-shadow: 0 0 20px rgba(184, 255, 54, 0.1);
 }
-.beat-dot.is-downbeat.is-active {
-  background: var(--orange);
-  box-shadow: 0 0 22px rgba(255, 157, 46, 0.9);
+.combo-box span { color: var(--lime); font-size: 0.62rem; font-weight: 950; letter-spacing: 0.1em; }
+.combo-box strong { font-size: 1.45rem; line-height: 1; }
+.unity-gauge { min-width: 160px; }
+.unity-label { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 5px; color: #d8f8ff; font-size: 0.7rem; font-weight: 900; }
+.unity-label b { color: var(--lime); }
+.unity-track { height: 9px; overflow: hidden; border: 1px solid rgba(46, 233, 255, 0.4); border-radius: 999px; background: rgba(3, 15, 31, 0.82); }
+.unity-track i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--cyan), var(--lime)); box-shadow: 0 0 14px var(--cyan); transition: width 220ms ease; }
+.beat-progress { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; max-width: 130px; }
+.beat-progress i { width: 12px; height: 12px; border: 1px solid rgba(188, 224, 235, 0.52); border-radius: 50%; background: rgba(2, 11, 25, 0.82); box-shadow: inset 0 0 5px rgba(255,255,255,.08); }
+.beat-progress i.is-current { border-color: var(--lime); background: var(--lime); box-shadow: 0 0 12px var(--lime); animation: beatPulse 700ms ease-in-out infinite alternate; }
+.beat-progress i.is-perfect { border-color: var(--success); background: var(--success); }
+.beat-progress i.is-good { border-color: var(--warning); background: var(--warning); }
+.beat-progress i.is-miss { border-color: var(--danger); background: var(--danger); opacity: .7; }
+@keyframes beatPulse { to { transform: scale(1.35); } }
+
+.judgement {
+  position: absolute;
+  z-index: 11;
+  left: 50%;
+  top: 43%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  animation: judgementPop 680ms ease both;
+}
+.judgement strong { font-size: clamp(3.2rem, 8vw, 7rem); line-height: .9; font-style: italic; letter-spacing: -.06em; text-shadow: 0 0 18px currentColor, 0 8px 0 rgba(0,0,0,.28); }
+.judgement span { margin-top: 12px; padding: 6px 16px; border-radius: 999px; background: rgba(2, 11, 25, .88); font-size: 1rem; font-weight: 950; }
+.judgement.is-perfect { color: var(--lime); }
+.judgement.is-good { color: var(--warning); }
+.judgement.is-miss { color: var(--danger); }
+@keyframes judgementPop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.5) rotate(-5deg); }
+  25% { opacity: 1; transform: translate(-50%, -50%) scale(1.08) rotate(0); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -56%) scale(.96); }
 }
 
 .stage-message {
@@ -467,9 +469,12 @@ main { min-height: 0; position: relative; }
   .mission-copy p { display: none; }
   .timer { width: 62px; }
   .timer span { font-size: 1.3rem; }
-  .player-label small { max-width: 180px; font-size: 0.6rem; }
-  .beat-panel { top: 8px; padding: 6px 10px; gap: 8px; }
-  .beat-dot { width: 28px; height: 28px; font-size: 0.7rem; }
+  .music-hud { inset: 8px 132px auto; grid-template-columns: 80px minmax(130px, 1fr) auto; gap: 8px; }
+  .combo-box { padding: 6px 8px; }
+  .combo-box strong { font-size: 1.2rem; }
+  .unity-label { font-size: .62rem; }
+  .beat-progress { max-width: 82px; gap: 4px; }
+  .beat-progress i { width: 9px; height: 9px; }
 }
 
 @media (orientation: portrait) and (max-width: 900px) {

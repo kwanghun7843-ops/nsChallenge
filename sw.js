@@ -1,5 +1,15 @@
-const CACHE_NAME = "namsan-unity-v4";
-const LOCAL_ASSETS = ["./", "./index.html", "./style.css", "./app.js", "./manifest.webmanifest", "./assets/icon.svg"];
+const CACHE_NAME = "namsan-unity-v5-bgm";
+const LOCAL_ASSETS = [
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./manifest.webmanifest",
+  "./assets/icon.svg",
+  "./assets/audio/sync-rush.mp3",
+  "./assets/audio/living-canvas.mp3",
+  "./assets/audio/neon-unity.mp3",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(LOCAL_ASSETS)));
